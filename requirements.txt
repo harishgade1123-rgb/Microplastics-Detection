@@ -9,3 +9,5 @@ requests
 Pillow
 python-dotenv
 google-generativeai
+flask
+flask-cors

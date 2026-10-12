@@ -150,13 +150,16 @@ def dashboard():
 
 @app.route("/api/health", methods=["GET"])
 def health():
+    detection_service_url = os.environ.get("MICROPLASTIC_DETECTION_URL")
     return jsonify({
         "status": "online",
         "model_loaded": model is not None,
         "model_path": MODEL_PATH if model else None,
         "clahe_available": cv2 is not None,
         "gemini_configured": is_gemini_configured(),
-        "gemini_model": os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        "gemini_model": os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+        "detection_service_bound": bool(detection_service_url),
+        "detection_service_url": detection_service_url if detection_service_url else None
     })
 
 @app.route("/api/train_gemini", methods=["POST"])
@@ -355,9 +358,42 @@ def detect():
             res_data["engine_used"] = f"Google Gemini AI ({gemini_model_used})"
             return jsonify(res_data)
 
-        # Standard YOLO detection
+        # Check if internal microplastic-detection service is bound via Vercel
+        detection_service_url = os.environ.get("MICROPLASTIC_DETECTION_URL")
+        if detection_service_url and engine != "gemini":
+            try:
+                target_url = f"{detection_service_url.rstrip('/')}/api/detect"
+                img_io = io.BytesIO()
+                pil_img.save(img_io, format="JPEG", quality=95)
+                img_io.seek(0)
+                forward_data = {
+                    "confidence": conf_thresh,
+                    "um_per_px": um_per_px,
+                    "apply_clahe": str(apply_clahe).lower()
+                }
+                files = {"image": (filename, img_io, "image/jpeg")}
+                resp = requests.post(target_url, data=forward_data, files=files, timeout=45)
+                if resp.status_code == 200:
+                    res_data = resp.json()
+                    res_data["filename"] = filename
+                    if engine == "hybrid" and is_gemini_configured():
+                        try:
+                            gemini_enrichment = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
+                            if "ai_analysis" in gemini_enrichment:
+                                res_data["ai_analysis"] = gemini_enrichment["ai_analysis"]
+                                res_data["ai_provider"] = "Hybrid Dual Engine (Internal YOLOv8 + Gemini AI)"
+                                res_data["engine_used"] = "Hybrid Dual Engine (Internal YOLOv8 + Gemini AI)"
+                        except Exception as ge:
+                            print(f"Hybrid Gemini enrichment skipped: {ge}")
+                    return jsonify(res_data)
+                else:
+                    print(f"Internal detection service returned {resp.status_code}, falling back to local model")
+            except Exception as fe:
+                print(f"Internal detection service request failed: {fe}, falling back to local model")
+
+        # Standard local YOLO detection fallback
         if model is None:
-            return jsonify({"error": "YOLO Model not loaded on server"}), 500
+            return jsonify({"error": "YOLO Model not loaded on server and internal service unavailable"}), 500
 
         res_data = process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px)
         res_data["success"] = True
@@ -384,7 +420,8 @@ def detect():
 @app.route("/api/batch_detect", methods=["POST"])
 def batch_detect():
     """Process multiple sample images in batch mode."""
-    if model is None and not is_gemini_configured():
+    detection_service_url = os.environ.get("MICROPLASTIC_DETECTION_URL")
+    if model is None and not is_gemini_configured() and not detection_service_url:
         return jsonify({"error": "No detection engine available (YOLO not loaded & Gemini not configured)"}), 500
     if "images" not in request.files:
         return jsonify({"error": "No images provided for batch detection"}), 400
@@ -401,14 +438,31 @@ def batch_detect():
         for file in files:
             try:
                 img_bytes = file.read()
-                pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                if model is not None:
-                    single_res = process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px)
-                elif is_gemini_configured():
-                    single_res = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
+                if detection_service_url:
+                    try:
+                        target_url = f"{detection_service_url.rstrip('/')}/api/detect"
+                        resp = requests.post(
+                            target_url,
+                            data={"confidence": conf_thresh, "um_per_px": um_per_px, "apply_clahe": str(apply_clahe).lower()},
+                            files={"image": (file.filename, io.BytesIO(img_bytes), "image/jpeg")},
+                            timeout=30
+                        )
+                        single_res = resp.json() if resp.status_code == 200 else None
+                    except Exception as b_fe:
+                        print(f"Batch internal service error for {file.filename}: {b_fe}")
+                        single_res = None
                 else:
-                    print(f"Batch skip {file.filename}: no engine available")
-                    continue
+                    single_res = None
+
+                if single_res is None:
+                    pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+                    if model is not None:
+                        single_res = process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px)
+                    elif is_gemini_configured():
+                        single_res = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
+                    else:
+                        print(f"Batch skip {file.filename}: no engine available")
+                        continue
                 single_res["filename"] = file.filename
                 results_list.append(single_res)
                 total_particles_all += single_res.get("particle_count", 0)
