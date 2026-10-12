@@ -1,5 +1,4 @@
-# Ignore heavy datasets & sub-repos
-microplastic-detection/
+# Ignore heavy datasets & runs
 data/
 **/data/
 runs/

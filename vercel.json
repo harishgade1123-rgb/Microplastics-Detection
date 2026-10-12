@@ -1,9 +1,31 @@
 {
-  "version": 2,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "app": {
+      "root": ".",
+      "framework": "flask",
+      "entrypoint": "server:app",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "microplastic-detection",
+          "format": "url",
+          "env": "MICROPLASTIC_DETECTION_URL"
+        }
+      ]
+    },
+    "microplastic-detection": {
+      "root": "microplastic-detection/microplastic-detection",
+      "framework": "flask",
+      "entrypoint": "api:app"
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index"
+      "destination": {
+        "service": "app"
+      }
     }
   ]
 }
