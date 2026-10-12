@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Powered Microplastic Detection &amp; Recognition for Environmental Monitoring</title>
+  <meta name="description" content="AI-Powered Microplastic Detection and Recognition system for environmental monitoring — real-time YOLO-based particle detection, micrometer sizing, contamination hazard analysis and environmental impact assessment.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='40' y2='40'%3E%3Cstop offset='0%25' stop-color='%232DD4BF'/%3E%3Cstop offset='100%25' stop-color='%2322D3EE'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 2L35.5 11V29L20 38L4.5 29V11L20 2Z' stroke='url(%23g)' stroke-width='3' fill='%230B0F17'/%3E%3Ccircle cx='20' cy='20' r='5' fill='%232DD4BF'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style_v2.css">
+</head>
+<body>
+
+  <!-- Ambient Floating Particle Canvas -->
+  <canvas id="particleCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+
+  <!-- Subtle Background Glows -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <!-- Toast Notifications -->
+  <div id="toastContainer"></div>
+
+  <div class="app-shell">
+
+    <!-- ================================================================
+         HEADER — slim, sticky
+         ================================================================ -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-mark" title="MicroDetect AI System">
+          <svg class="brand-logo-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 2L35.5885 11V29L20 38L4.41154 29V11L20 2Z" stroke="#2DD4BF" stroke-width="2.5" fill="rgba(45,212,191,0.12)"/>
+            <circle cx="20" cy="20" r="10" stroke="#38BDF8" stroke-width="1.8" stroke-dasharray="3 2"/>
+            <circle cx="20" cy="20" r="4" fill="#2DD4BF"/>
+            <line x1="20" y1="6" x2="20" y2="10" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round"/>
+            <line x1="20" y1="30" x2="20" y2="34" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round"/>
+            <line x1="6" y1="20" x2="10" y2="20" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round"/>
+            <line x1="30" y1="20" x2="34" y2="20" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1 class="logo-title">
+            AI-Powered Microplastic
+            <span class="badge">Detection &amp; Recognition</span>
+          </h1>
+          <p class="logo-subtitle">For Environmental Monitoring · YOLO-Based Particle Sizing, Morphology Classification &amp; Contamination Hazard Assessment</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Live status pill -->
+        <div class="status-pill">
+          <span class="status-indicator" id="statusIndicator"></span>
+          <span id="statusText">Connecting API...</span>
+        </div>
+
+        <!-- Grouped action cluster -->
+        <div class="header-actions">
+          <button class="hdr-btn" id="shareBtn" title="Copy summary to clipboard">📋 Share</button>
+          <div class="hdr-divider"></div>
+          <button class="hdr-btn" id="batchModeBtn" title="Switch to Batch Mode">📦 Batch</button>
+          <div class="hdr-divider"></div>
+          <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Light/Dark Mode">🌙</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================================================================
+         TAB BAR — underline style
+         ================================================================ -->
+    <nav class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" id="tabSingle" data-tab="single">
+        <span class="tab-icon">🔬</span> Single Analysis
+      </button>
+      <button class="mode-tab" id="tabBatch" data-tab="batch">
+        <span class="tab-icon">📦</span> Batch Analysis
+      </button>
+      <button class="mode-tab" id="tabEVS" data-tab="evs">
+        <span class="tab-icon">🌍</span> Environment
+      </button>
+      <button class="mode-tab" id="tabHistory" data-tab="history">
+        <span class="tab-icon">📅</span> Scan History
+      </button>
+      <button class="mode-tab" id="tabReport" data-tab="report">
+        <span class="tab-icon">📝</span> Lab Report
+      </button>
+    </nav>
+
+    <!-- ================================================================
+         SINGLE ANALYSIS PANE
+         ================================================================ -->
+    <div id="paneSingle" class="tab-pane active">
+      <div class="dashboard-grid">
+
+        <!-- ── LEFT SIDEBAR ────────────────────────────────────────── -->
+        <aside class="control-panel">
+
+          <!-- UPLOAD & CALIBRATION -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <span>📤</span> Upload &amp; Calibration
+            </div>
+            <div class="section-body">
+              <div class="dropzone" id="dropzone">
+                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg" style="display:none;">
+                <div class="dropzone-icon">📷</div>
+                <div class="dropzone-text">
+                  <strong>Drag &amp; Drop Microscopic Sample</strong>
+                  <span>or click to browse (JPG, PNG)</span>
+                </div>
+              </div>
+              <button class="sidebar-detect-btn" id="detectBtn" style="margin: 8px 0 0 0; width: 100%;">
+                🔬 Run AI Detection &amp; Sizing
+              </button>
+            </div>
+          </div>
+
+          <!-- QUICK TEST SAMPLES -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <span>🖼️</span> Quick Test Samples
+            </div>
+            <div class="section-body">
+              <div class="sample-gallery" id="sampleGallery">
+                <div class="gallery-loading" id="galleryLoading">Loading samples...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OPTICAL CALIBRATION -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <span>🔬</span> Optical Scale Calibration
+            </div>
+            <div class="section-body">
+              <label class="input-label">Magnification Preset</label>
+              <div class="preset-buttons">
+                <button class="preset-btn" data-scale="2.5">10× (2.5µm/px)</button>
+                <button class="preset-btn active" data-scale="1.5">20× (1.5µm/px)</button>
+                <button class="preset-btn" data-scale="0.8">40× (0.8µm/px)</button>
+                <button class="preset-btn" data-scale="0.25">100× (0.25µm/px)</button>
+              </div>
+              <div class="custom-scale-row" style="margin-top:10px;">
+                <label for="umScaleInput" class="custom-scale-label">Custom Ratio (µm/px):</label>
+                <input type="number" id="umScaleInput" value="1.5" step="0.1" min="0.01">
+              </div>
+            </div>
+          </div>
+
+          <!-- AI DETECTION PROVIDER -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <span>🤖</span> AI Detection Provider
+              <span class="summary-badge" id="geminiBadge">Gemini AI</span>
+            </div>
+            <div class="section-body">
+              <label class="input-label">Selected AI Model</label>
+              <select id="engineSelect">
+                <option value="hybrid" selected>⚡ Hybrid AI Engine (YOLOv8 + Gemini 1.5)</option>
+                <option value="gemini">🧠 Google Gemini 1.5 Vision AI</option>
+                <option value="yolo">🔬 YOLOv8 Local Computer Vision</option>
+              </select>
+              <button class="gemini-train-btn" id="trainGeminiBtn">
+                🎓 Train Gemini AI on Dataset
+              </button>
+            </div>
+          </div>
+
+          <!-- DETECTION SETTINGS -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <span>⚙️</span> Detection Settings
+            </div>
+            <div class="section-body">
+              <div class="setting-row slider-row">
+                <div class="slider-label-row">
+                  <label for="confSlider" class="input-label" style="margin:0;">Confidence Threshold</label>
+                  <span class="slider-val" id="confVal">0.25</span>
+                </div>
+                <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.25">
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label-group">
+                  <span class="toggle-label">✨ CLAHE Preprocessing</span>
+                  <span class="toggle-sub">Boost visibility for translucent particles</span>
+                </div>
+                <input type="checkbox" id="claheToggle">
+              </div>
+            </div>
+          </div>
+
+          <!-- IMAGE INFORMATION -->
+          <div class="sidebar-section" id="imageInfoCard">
+            <div class="sidebar-section-header">
+              <span>🖼️</span> Image Information
+            </div>
+            <div class="section-body">
+              <div class="image-info-grid" id="imageInfoGrid">
+                <div class="info-row"><span class="info-key">File Name</span><span class="info-val" id="infoFileName">—</span></div>
+                <div class="info-row"><span class="info-key">Resolution</span><span class="info-val" id="infoResolution">—</span></div>
+                <div class="info-row"><span class="info-key">File Size</span><span class="info-val" id="infoFileSize">—</span></div>
+                <div class="info-row"><span class="info-key">Format</span><span class="info-val" id="infoFormat">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CONTAMINATION RISK GUIDE -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <span>🌊</span> Contamination Risk Guide
+            </div>
+            <div class="section-body">
+              <div class="risk-legend">
+                <div class="risk-row"><span class="risk-dot" style="background:#0EA572;"></span><span class="risk-text"><strong>Zero</strong> — No particles detected</span></div>
+                <div class="risk-row"><span class="risk-dot" style="background:#3779E1;"></span><span class="risk-text"><strong>Low</strong> — 1–9 particles</span></div>
+                <div class="risk-row"><span class="risk-dot" style="background:#D9880F;"></span><span class="risk-text"><strong>Moderate</strong> — 10–29 particles</span></div>
+                <div class="risk-row"><span class="risk-dot" style="background:#DC3535;"></span><span class="risk-text"><strong>High Hazard</strong> — 30+ particles</span></div>
+              </div>
+            </div>
+          </div>
+
+        </aside><!-- /control-panel -->
+
+        <!-- ── MAIN RESULTS PANEL ─────────────────────────────────── -->
+        <section class="results-panel">
+
+          <!-- Panel header + export actions -->
+          <div class="panel-header">
+            <h2>📊 Detection Results &amp; Scientific Analytics</h2>
+            <div class="export-actions">
+              <button class="icon-btn highlight" id="topDetectBtn">🔬 Run AI Detection</button>
+              <button class="icon-btn highlight" id="downloadPdfBtn" disabled>📑 Lab Report PDF</button>
+              <button class="icon-btn" id="downloadCsvBtn" disabled>📥 CSV</button>
+              <button class="icon-btn" id="downloadJsonBtn" disabled>📄 JSON</button>
+            </div>
+          </div>
+
+          <!-- WHO Alert Banner -->
+          <div class="who-alert-banner" id="whoAlertBanner" style="display:none;">
+            <span class="who-alert-icon">🚨</span>
+            <div class="who-alert-text">
+              <strong id="whoAlertTitle">WHO Threshold Exceeded</strong>
+              <span id="whoAlertMsg">Contamination level is above safe drinking water standards.</span>
+            </div>
+            <button class="who-alert-close" id="whoAlertClose">✕</button>
+          </div>
+
+          <!-- WHO Safety Badge -->
+          <div class="who-badge-row" id="whoBadgeRow" style="display:none;">
+            <div class="who-badge" id="whoBadge">
+              <span class="who-icon" id="whoIcon">🏥</span>
+              <div>
+                <div class="who-title" id="whoTitle">WHO Water Safety</div>
+                <div class="who-status" id="whoStatus">—</div>
+              </div>
+              <span class="who-pill" id="whoPill">—</span>
+            </div>
+            <div class="polymer-badge" id="polymerBadge" style="display:none;">
+              <span class="polymer-icon">🧪</span>
+              <div>
+                <div class="who-title">Likely Polymer</div>
+                <div class="who-status" id="polymerType">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── IMAGE VIEWER ─────────────────────────────────────── -->
+          <div class="preview-container" id="previewContainer">
+
+            <!-- Zoom controls -->
+            <div class="zoom-controls" id="zoomControls" style="display:none;">
+              <button class="zoom-btn" id="zoomInBtn" title="Zoom In">➕</button>
+              <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">➖</button>
+              <button class="zoom-btn" id="zoomResetBtn" title="Reset View">🔄 Reset</button>
+            </div>
+
+            <!-- Empty state with microscope reticle -->
+            <div class="placeholder-state" id="placeholderState">
+              <!-- SVG reticle/crosshair grid overlay -->
+              <svg class="reticle-svg" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                <!-- Grid lines -->
+                <g stroke="#2DD4BF" stroke-width="0.5" fill="none">
+                  <line x1="0" y1="50"  x2="400" y2="50"/>
+                  <line x1="0" y1="100" x2="400" y2="100"/>
+                  <line x1="0" y1="150" x2="400" y2="150"/>
+                  <line x1="0" y1="200" x2="400" y2="200"/>
+                  <line x1="0" y1="250" x2="400" y2="250"/>
+                  <line x1="50"  y1="0" x2="50"  y2="300"/>
+                  <line x1="100" y1="0" x2="100" y2="300"/>
+                  <line x1="150" y1="0" x2="150" y2="300"/>
+                  <line x1="200" y1="0" x2="200" y2="300"/>
+                  <line x1="250" y1="0" x2="250" y2="300"/>
+                  <line x1="300" y1="0" x2="300" y2="300"/>
+                  <line x1="350" y1="0" x2="350" y2="300"/>
+                </g>
+                <!-- Cross-hair center -->
+                <g stroke="#2DD4BF" stroke-width="1.2" fill="none">
+                  <line x1="180" y1="150" x2="220" y2="150"/>
+                  <line x1="200" y1="130" x2="200" y2="170"/>
+                  <circle cx="200" cy="150" r="22"/>
+                  <circle cx="200" cy="150" r="40" stroke-dasharray="4 4"/>
+                </g>
+                <!-- Corner brackets -->
+                <g stroke="#2DD4BF" stroke-width="1.5" fill="none">
+                  <path d="M10,30 L10,10 L30,10"/>
+                  <path d="M370,10 L390,10 L390,30"/>
+                  <path d="M10,270 L10,290 L30,290"/>
+                  <path d="M370,290 L390,290 L390,270"/>
+                </g>
+              </svg>
+              <div class="placeholder-icon">🔍</div>
+              <p>No sample loaded yet. Upload a microscopic image or click a Quick Test Sample to begin detection.</p>
+            </div>
+
+            <!-- Before / After comparison slider -->
+            <div class="compare-wrap" id="compareWrap" style="display:none;">
+              <div class="compare-label compare-label-left">Original</div>
+              <div class="compare-label compare-label-right">Detected</div>
+              <div class="compare-before" id="compareBefore">
+                <img id="originalImg" alt="Original">
+              </div>
+              <div class="compare-after" id="compareAfter">
+                <img id="annotatedImgCompare" alt="Annotated">
+              </div>
+              <div class="compare-handle" id="compareHandle"></div>
+            </div>
+
+            <!-- Main annotated image -->
+            <div class="image-wrapper" id="imageWrapper">
+              <img id="annotatedImg" alt="Annotated Detection Result" style="display:none;">
+            </div>
+
+            <!-- Overlay action button row -->
+            <div class="overlay-btn-row" id="overlayBtnRow">
+              <button class="compare-toggle-btn" id="compareToggleBtn" style="display:none;">⚡ Before/After</button>
+              <button class="heatmap-toggle-btn" id="heatmapToggleBtn" style="display:none;">🔥 Heatmap</button>
+            </div>
+
+            <!-- Multi-Step Progress Bar -->
+            <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+              <div class="progress-steps" id="progressSteps">
+                <div class="progress-step" id="step1">
+                  <div class="step-dot active"></div>
+                  <span>Uploading</span>
+                </div>
+                <div class="progress-step-line"></div>
+                <div class="progress-step" id="step2">
+                  <div class="step-dot"></div>
+                  <span>Preprocessing</span>
+                </div>
+                <div class="progress-step-line"></div>
+                <div class="progress-step" id="step3">
+                  <div class="step-dot"></div>
+                  <span>YOLO Inference</span>
+                </div>
+                <div class="progress-step-line"></div>
+                <div class="progress-step" id="step4">
+                  <div class="step-dot"></div>
+                  <span>Sizing</span>
+                </div>
+                <div class="progress-step-line"></div>
+                <div class="progress-step" id="step5">
+                  <div class="step-dot"></div>
+                  <span>Report</span>
+                </div>
+              </div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+              </div>
+              <p class="progress-label" id="progressLabel">Uploading image to server...</p>
+            </div>
+
+          </div><!-- /preview-container -->
+
+          <!-- ── KPI CARDS ─────────────────────────────────────────── -->
+          <div class="kpi-grid">
+
+            <div class="kpi-card">
+              <svg class="kpi-ring" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Microscope / particle icon for Detected Particles -->
+                <circle cx="36" cy="36" r="32" stroke="#2DD4BF" stroke-width="2" opacity="0.25"/>
+                <!-- Lens circle -->
+                <circle cx="36" cy="30" r="12" stroke="#2DD4BF" stroke-width="3"/>
+                <!-- Crosshair inside lens -->
+                <line x1="36" y1="22" x2="36" y2="38" stroke="#2DD4BF" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="28" y1="30" x2="44" y2="30" stroke="#2DD4BF" stroke-width="1.8" stroke-linecap="round"/>
+                <!-- Particle dots -->
+                <circle cx="28" cy="52" r="3" fill="#2DD4BF"/>
+                <circle cx="36" cy="55" r="2" fill="#2DD4BF" opacity="0.7"/>
+                <circle cx="44" cy="51" r="2.5" fill="#2DD4BF" opacity="0.85"/>
+                <!-- Stand stem -->
+                <line x1="36" y1="42" x2="36" y2="50" stroke="#2DD4BF" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="28" y1="50" x2="44" y2="50" stroke="#2DD4BF" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+              <div class="kpi-label">Detected Particles</div>
+              <div class="kpi-value cyan" id="kpiCount">0</div>
+              <div class="kpi-sub">Total microplastics found</div>
+            </div>
+
+            <div class="kpi-card">
+              <svg class="kpi-ring" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Shield with checkmark for High Confidence -->
+                <circle cx="36" cy="36" r="32" stroke="#A78BFA" stroke-width="2" opacity="0.25"/>
+                <!-- Shield shape -->
+                <path d="M36 14 L54 22 L54 38 C54 50 44 58 36 62 C28 58 18 50 18 38 L18 22 Z" stroke="#A78BFA" stroke-width="2.8" stroke-linejoin="round"/>
+                <!-- Checkmark -->
+                <polyline points="26,36 33,44 46,28" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div class="kpi-label">High Confidence (&gt;50%)</div>
+              <div class="kpi-value purple" id="kpiHighConf">0</div>
+              <div class="kpi-sub">Definite classifications</div>
+            </div>
+
+            <div class="kpi-card">
+              <svg class="kpi-ring" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Brain / AI icon for Avg Confidence -->
+                <circle cx="36" cy="36" r="32" stroke="#34D399" stroke-width="2" opacity="0.25"/>
+                <!-- Brain outline -->
+                <path d="M36 18 C30 18 22 23 22 31 C22 35 24 38 26 40 C24 42 23 45 24 48 C25 52 29 54 33 53 C34 56 35 57 36 57 C37 57 38 56 39 53 C43 54 47 52 48 48 C49 45 48 42 46 40 C48 38 50 35 50 31 C50 23 42 18 36 18 Z" stroke="#34D399" stroke-width="2.5" stroke-linejoin="round"/>
+                <!-- Neural connection lines -->
+                <line x1="36" y1="28" x2="36" y2="46" stroke="#34D399" stroke-width="1.5" stroke-dasharray="3 2" stroke-linecap="round"/>
+                <line x1="28" y1="34" x2="44" y2="38" stroke="#34D399" stroke-width="1.5" stroke-dasharray="3 2" stroke-linecap="round"/>
+                <line x1="28" y1="40" x2="44" y2="34" stroke="#34D399" stroke-width="1.5" stroke-dasharray="3 2" stroke-linecap="round"/>
+                <!-- Nodes -->
+                <circle cx="36" cy="28" r="2" fill="#34D399"/>
+                <circle cx="28" cy="34" r="2" fill="#34D399"/>
+                <circle cx="44" cy="34" r="2" fill="#34D399"/>
+                <circle cx="36" cy="46" r="2" fill="#34D399"/>
+              </svg>
+              <div class="kpi-label">Avg Confidence</div>
+              <div class="kpi-value emerald" id="kpiAvgConf">0%</div>
+              <div class="kpi-sub">AI certainty score</div>
+            </div>
+
+            <div class="kpi-card">
+              <svg class="kpi-ring" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Biohazard / Warning icon for Contamination Hazard -->
+                <circle cx="36" cy="36" r="32" stroke="#E8EBF0" stroke-width="2" opacity="0.25"/>
+                <!-- Triangle warning -->
+                <path d="M36 14 L58 54 L14 54 Z" stroke="#E8EBF0" stroke-width="3" stroke-linejoin="round"/>
+                <!-- Exclamation stem -->
+                <line x1="36" y1="28" x2="36" y2="42" stroke="#E8EBF0" stroke-width="3.5" stroke-linecap="round"/>
+                <!-- Exclamation dot -->
+                <circle cx="36" cy="48" r="2.2" fill="#E8EBF0"/>
+              </svg>
+              <div class="kpi-label">Contamination Hazard</div>
+              <div class="kpi-value hazard" id="kpiRisk">Ready</div>
+              <div class="kpi-sub" id="kpiRiskSub">Upload sample to evaluate</div>
+            </div>
+
+          </div><!-- /kpi-grid -->
+
+          <!-- ── QUICK INSIGHTS STRIP ──────────────────────────────── -->
+          <div class="insights-strip" id="insightsStrip" style="display:none;">
+            <div class="insights-strip-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Auto Insights
+            </div>
+            <div class="insights-chips" id="insightsChips"></div>
+          </div>
+
+          <!-- ── CONTAMINATION RISK GAUGE + SIZE BREAKDOWN ROW ────── -->
+          <div class="gauge-row" id="gaugeRow" style="display:none;">
+
+            <!-- Risk Speedometer Gauge -->
+            <div class="gauge-card">
+              <div class="gauge-card-title">⚠️ Contamination Risk Meter</div>
+              <div class="gauge-wrap">
+                <svg class="gauge-svg" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Track arc (bottom half of circle) -->
+                  <path d="M 15,100 A 85,85 0 0,1 185,100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="18" stroke-linecap="round"/>
+                  <!-- Colored fill arc -->
+                  <path id="gaugeFillArc" d="M 15,100 A 85,85 0 0,1 185,100" fill="none" stroke="url(#gaugeGrad)" stroke-width="18" stroke-linecap="round" stroke-dasharray="267" stroke-dashoffset="267" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1);"/>
+                  <!-- Tick marks -->
+                  <g stroke="rgba(255,255,255,0.15)" stroke-width="1.5">
+                    <line x1="100" y1="16" x2="100" y2="8"/>
+                    <line x1="52" y1="29" x2="47" y2="22"/>
+                    <line x1="20" y1="66" x2="13" y2="62"/>
+                    <line x1="148" y1="29" x2="153" y2="22"/>
+                    <line x1="180" y1="66" x2="187" y2="62"/>
+                  </g>
+                  <!-- Zone labels -->
+                  <text x="16" y="104" font-size="8" fill="#34D399" font-family="Inter,sans-serif" font-weight="700">LOW</text>
+                  <text x="83" y="14" font-size="8" fill="#FBBF24" font-family="Inter,sans-serif" font-weight="700">MOD</text>
+                  <text x="162" y="104" font-size="8" fill="#F87171" font-family="Inter,sans-serif" font-weight="700">HIGH</text>
+                  <!-- Needle -->
+                  <line id="gaugeNeedle" x1="100" y1="100" x2="100" y2="22" stroke="#E8EBF0" stroke-width="2.5" stroke-linecap="round" style="transform-origin:100px 100px; transform:rotate(-90deg); transition:transform 1.2s cubic-bezier(0.34,1.56,0.64,1);"/>
+                  <circle cx="100" cy="100" r="5" fill="#E8EBF0"/>
+                  <!-- Gradient def -->
+                  <defs>
+                    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#34D399"/>
+                      <stop offset="50%" stop-color="#FBBF24"/>
+                      <stop offset="100%" stop-color="#F87171"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="gauge-center-val">
+                  <div class="gauge-score" id="gaugeScore">0</div>
+                  <div class="gauge-score-label" id="gaugeLabel">No Data</div>
+                </div>
+              </div>
+              <div class="gauge-legend">
+                <span><span class="gauge-dot" style="background:#34D399;"></span>Safe (0–25)</span>
+                <span><span class="gauge-dot" style="background:#FBBF24;"></span>Moderate (26–60)</span>
+                <span><span class="gauge-dot" style="background:#F87171;"></span>Critical (61–100)</span>
+              </div>
+            </div>
+
+            <!-- Particle Size Breakdown -->
+            <div class="gauge-card size-breakdown-card">
+              <div class="gauge-card-title">📏 Particle Size Breakdown</div>
+              <div class="size-breakdown-bars" id="sizeBreakdownBars">
+                <div class="size-band-row">
+                  <div class="size-band-label">Nano (&lt;1µm)</div>
+                  <div class="size-band-track"><div class="size-band-fill nano" id="sizeNano" style="width:0%"></div></div>
+                  <div class="size-band-count" id="sizeNanoCount">0</div>
+                </div>
+                <div class="size-band-row">
+                  <div class="size-band-label">Micro (1–10µm)</div>
+                  <div class="size-band-track"><div class="size-band-fill micro" id="sizeMicro" style="width:0%"></div></div>
+                  <div class="size-band-count" id="sizeMicroCount">0</div>
+                </div>
+                <div class="size-band-row">
+                  <div class="size-band-label">Small (10–100µm)</div>
+                  <div class="size-band-track"><div class="size-band-fill small" id="sizeSmall" style="width:0%"></div></div>
+                  <div class="size-band-count" id="sizeSmallCount">0</div>
+                </div>
+                <div class="size-band-row">
+                  <div class="size-band-label">Medium (100–500µm)</div>
+                  <div class="size-band-track"><div class="size-band-fill medium" id="sizeMedium" style="width:0%"></div></div>
+                  <div class="size-band-count" id="sizeMediumCount">0</div>
+                </div>
+                <div class="size-band-row">
+                  <div class="size-band-label">Large (&gt;500µm)</div>
+                  <div class="size-band-track"><div class="size-band-fill large" id="sizeLarge" style="width:0%"></div></div>
+                  <div class="size-band-count" id="sizeLargeCount">0</div>
+                </div>
+              </div>
+              <!-- Confidence Sparkline -->
+              <div class="gauge-card-title" style="margin-top:16px;">🎯 Confidence Sparkline</div>
+              <div class="conf-sparkline-wrap">
+                <div class="conf-sparkline-bars" id="confSparklineBars"></div>
+                <div class="conf-sparkline-axis">
+                  <span>0%</span><span>50%</span><span>100%</span>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /gauge-row -->
+
+          <!-- ── GEMINI AI ANALYSIS CARD ───────────────────────────── -->
+          <div id="aiAnalysisCard" style="display:none;">
+            <div class="ai-card-header">
+              <span>💡 Gemini AI Vision Scientific Analysis &amp; Polymer Origin</span>
+              <span id="aiProviderBadge" class="badge" style="background:rgba(139,92,246,0.18);color:#c084fc;border-color:rgba(168,85,247,0.3);">Gemini AI</span>
+            </div>
+            <div class="ai-card-body" id="aiAnalysisText">Analysis pending...</div>
+          </div>
+
+          <!-- ── ADVANCED STATS ────────────────────────────────────── -->
+          <div id="statsPanel" style="display:none;">
+            <div class="stats-panel-inner">
+              <div class="stats-panel-title">📊 Advanced Statistical Analysis</div>
+              <div class="stats-grid">
+                <div class="stat-box"><div class="stat-box-val" id="statMean">—</div><div class="stat-box-lbl">Mean Size (µm)</div></div>
+                <div class="stat-box"><div class="stat-box-val" id="statMedian">—</div><div class="stat-box-lbl">Median Size (µm)</div></div>
+                <div class="stat-box"><div class="stat-box-val" id="statStdDev">—</div><div class="stat-box-lbl">Std Deviation</div></div>
+                <div class="stat-box"><div class="stat-box-val" id="statMin">—</div><div class="stat-box-lbl">Smallest (µm)</div></div>
+                <div class="stat-box"><div class="stat-box-val" id="statMax">—</div><div class="stat-box-lbl">Largest (µm)</div></div>
+                <div class="stat-box"><div class="stat-box-val" id="statDensity">—</div><div class="stat-box-lbl">Density /cm²</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SAMPLE GRADE SCORECARD ────────────────────────────── -->
+          <div id="scorecard" style="display:none;">
+            <div class="scorecard-inner">
+              <div class="scorecard-left">
+                <div class="grade-circle" id="gradeCircle">
+                  <span class="grade-letter" id="gradeLetter">—</span>
+                </div>
+                <div>
+                  <div class="grade-title" id="gradeTitle">Sample Grade</div>
+                  <div class="grade-desc" id="gradeDesc">Run detection to get grade</div>
+                </div>
+              </div>
+              <div class="scorecard-stats">
+                <div class="score-stat"><span class="score-stat-val" id="scoreParticleDensity">—</span><span class="score-stat-label">Particles/cm²</span></div>
+                <div class="score-stat"><span class="score-stat-val" id="scoreMaxSize">—</span><span class="score-stat-label">Largest (µm)</span></div>
+                <div class="score-stat"><span class="score-stat-val" id="scoreDomMorph">—</span><span class="score-stat-label">Dominant Type</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ENVIRONMENTAL IMPACT DASHBOARD ───────────────────── -->
+          <div class="env-dashboard" id="envDashboard">
+            <div class="env-header">
+              <span class="env-title">🌍 Environmental Impact Assessment</span>
+              <span class="env-subtitle">Real-world consequences of detected microplastic contamination</span>
+            </div>
+            <div class="env-meters">
+
+              <!-- Water Contamination -->
+              <div class="env-meter-card">
+                <div class="env-gauge-wrap">
+                  <svg class="env-gauge-svg" viewBox="0 0 60 60">
+                    <circle class="env-gauge-track" cx="30" cy="30" r="24"/>
+                    <circle class="env-gauge-fill water" cx="30" cy="30" r="24" id="envWaterGauge"/>
+                  </svg>
+                  <div class="env-gauge-icon">💧</div>
+                </div>
+                <div class="env-meter-label">Water Contamination</div>
+                <div class="env-meter-value" id="envWater">—</div>
+                <div class="env-meter-unit">litres affected</div>
+                <div class="env-bar-wrap"><div class="env-bar-fill water" id="envWaterBar" style="width:0%"></div></div>
+              </div>
+
+              <!-- Marine Life Risk -->
+              <div class="env-meter-card">
+                <div class="env-gauge-wrap">
+                  <svg class="env-gauge-svg" viewBox="0 0 60 60">
+                    <circle class="env-gauge-track" cx="30" cy="30" r="24"/>
+                    <circle class="env-gauge-fill marine" cx="30" cy="30" r="24" id="envMarineGauge"/>
+                  </svg>
+                  <div class="env-gauge-icon">🐠</div>
+                </div>
+                <div class="env-meter-label">Marine Life Risk</div>
+                <div class="env-meter-value" id="envMarine">—</div>
+                <div class="env-meter-unit">species at risk</div>
+                <div class="env-bar-wrap"><div class="env-bar-fill marine" id="envMarineBar" style="width:0%"></div></div>
+              </div>
+
+              <!-- Human Health Score -->
+              <div class="env-meter-card">
+                <div class="env-gauge-wrap">
+                  <svg class="env-gauge-svg" viewBox="0 0 60 60">
+                    <circle class="env-gauge-track" cx="30" cy="30" r="24"/>
+                    <circle class="env-gauge-fill health" cx="30" cy="30" r="24" id="envHealthGauge"/>
+                  </svg>
+                  <div class="env-gauge-icon">🧬</div>
+                </div>
+                <div class="env-meter-label">Human Health Score</div>
+                <div class="env-meter-value" id="envHealth">—</div>
+                <div class="env-meter-unit">µg/day equivalent</div>
+                <div class="env-bar-wrap"><div class="env-bar-fill health" id="envHealthBar" style="width:0%"></div></div>
+              </div>
+
+              <!-- Pollution Index -->
+              <div class="env-meter-card">
+                <div class="env-gauge-wrap">
+                  <svg class="env-gauge-svg" viewBox="0 0 60 60">
+                    <circle class="env-gauge-track" cx="30" cy="30" r="24"/>
+                    <circle class="env-gauge-fill pollution" cx="30" cy="30" r="24" id="envPollutionGauge"/>
+                  </svg>
+                  <div class="env-gauge-icon">♻️</div>
+                </div>
+                <div class="env-meter-label">Pollution Index</div>
+                <div class="env-meter-value" id="envPollution">—</div>
+                <div class="env-meter-unit">severity score /100</div>
+                <div class="env-bar-wrap"><div class="env-bar-fill pollution" id="envPollutionBar" style="width:0%"></div></div>
+              </div>
+
+            </div><!-- /env-meters -->
+
+            <div class="env-recommendation" id="envRecommendation">
+              <span class="env-rec-icon">💡</span>
+              <span id="envRecText">Run a detection to see environmental impact assessment.</span>
+            </div>
+
+          </div><!-- /env-dashboard -->
+
+          <!-- ── SCIENTIFIC CHARTS ──────────────────────────────────── -->
+          <div class="analytics-section" id="analyticsSection">
+            <div class="chart-card">
+              <h3>📈 Particle Size Distribution (µm)</h3>
+              <div class="chart-container">
+                <canvas id="sizeChart"></canvas>
+              </div>
+            </div>
+            <div class="chart-card">
+              <h3>🧩 Morphology Classification</h3>
+              <div class="chart-container">
+                <canvas id="morphologyChart"></canvas>
+              </div>
+            </div>
+            <div class="chart-card chart-card-wide">
+              <h3>📉 Confidence Score Distribution</h3>
+              <div class="chart-container">
+                <canvas id="confidenceChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SESSION HISTORY (inline) ──────────────────────────── -->
+          <div class="history-card" id="historyCard" style="display:none;">
+            <div class="history-header">
+              <div class="history-header-title">
+                <h3>🕐 Session Scan History</h3>
+                <span class="history-count-badge" id="historyCountBadge">0 scans</span>
+              </div>
+              <button class="icon-btn" id="clearHistoryBtn" style="font-size:11px;">🗑️ Clear Log</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+          </div>
+
+          <!-- ── DETECTION TABLE ───────────────────────────────────── -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <span>
+                <span class="table-card-title">📋 Particle Detection &amp; Micrometer Breakdown</span>
+                <span class="table-card-hint">(click any row for details)</span>
+              </span>
+              <div class="conf-filter-row" id="confFilterRow" style="display:none;">
+                <label style="font-size:11.5px;color:var(--text-secondary);">Min Conf: <strong id="confFilterVal">0%</strong></label>
+                <input type="range" id="confFilterSlider" min="0" max="100" step="5" value="0" style="width:110px;">
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table" id="dataTable">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Class</th>
+                    <th>Morphology</th>
+                    <th>Size Band</th>
+                    <th>Dimensions (µm)</th>
+                    <th>Area (µm²)</th>
+                    <th>Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody">
+                  <tr>
+                    <td colspan="7" class="empty-cell">No detection data available</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div><!-- /table-card -->
+
+        </section><!-- /results-panel -->
+
+      </div><!-- /dashboard-grid -->
+    </div><!-- /paneSingle -->
+
+    <!-- ================================================================
+         BATCH ANALYSIS PANE
+         ================================================================ -->
+    <div id="paneBatch" class="tab-pane">
+      <section class="batch-panel">
+        <div class="panel-header" style="margin-bottom:20px;">
+          <h2>📦 Batch Image Analysis</h2>
+          <span style="font-size:12px;color:var(--text-secondary);">Upload multiple microscopic samples for simultaneous analysis</span>
+        </div>
+
+        <div class="batch-dropzone" id="batchDropzone">
+          <input type="file" id="batchFileInput" accept="image/jpeg,image/png,image/jpg" multiple style="display:none;">
+          <div class="dropzone-icon">🗂️</div>
+          <div class="dropzone-text">
+            <strong>Drop Multiple Images Here</strong>
+            <span>or click to select multiple files (JPG, PNG)</span>
+          </div>
+        </div>
+
+        <div class="batch-file-list" id="batchFileList"></div>
+
+        <div class="batch-settings">
+          <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+            <div>
+              <label class="input-label">Confidence</label>
+              <input type="number" id="batchConf" value="0.25" min="0.05" max="0.95" step="0.05" style="width:70px;">
+            </div>
+            <div>
+              <label class="input-label">Scale (µm/px)</label>
+              <input type="number" id="batchScale" value="1.5" min="0.01" step="0.1" style="width:80px;">
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;">
+              <input type="checkbox" id="batchClahe"> CLAHE Enhancement
+            </label>
+          </div>
+        </div>
+
+        <button class="primary-btn" id="batchDetectBtn" disabled style="margin-top:0;">📦 Run Batch Detection</button>
+
+        <div class="batch-results" id="batchResults" style="display:none;">
+          <div class="batch-summary" id="batchSummary"></div>
+          <div class="table-wrapper" style="margin-top:14px;">
+            <table class="data-table" id="batchTable">
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Particles</th>
+                  <th>High Conf</th>
+                  <th>Avg Conf</th>
+                  <th>Risk Level</th>
+                  <th>Dominant Morphology</th>
+                </tr>
+              </thead>
+              <tbody id="batchTableBody">
+                <tr><td colspan="6" class="empty-cell">No batch results yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="batch-loading" id="batchLoading" style="display:none;">
+          <div class="spinner"></div>
+          <p id="batchLoadingText" style="font-size:13px;color:var(--text-secondary);">Processing batch...</p>
+        </div>
+
+      </section>
+    </div><!-- /paneBatch -->
+
+    <!-- ================================================================
+         SCAN HISTORY PANE
+         ================================================================ -->
+    <div id="paneHistory" class="tab-pane">
+      <section class="history-panel">
+        <div class="panel-header" style="margin-bottom:20px;">
+          <h2>📅 Scan History &amp; Trend Analysis</h2>
+          <div style="display:flex;gap:8px;">
+            <button class="icon-btn" id="exportHistoryBtn">📥 Export History</button>
+            <button class="icon-btn" id="clearAllHistoryBtn" style="color:#DC3535;">🗑️ Clear All</button>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom:20px;">
+          <h3>📊 Contamination Trend Over Time</h3>
+          <div class="chart-container" style="height:220px;">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+
+        <div class="history-entries" id="historyEntries">
+          <div class="history-empty" id="historyEmpty">
+            <div style="font-size:2.8rem;margin-bottom:12px;">🔍</div>
+            <p>No scans recorded yet. Run a detection to start your history log!</p>
+          </div>
+        </div>
+
+      </section>
+    </div><!-- /paneHistory -->
+
+    <!-- ================================================================
+         EVS EDUCATIONAL PANE
+         ================================================================ -->
+    <div id="paneEVS" class="tab-pane">
+      <section class="evs-panel">
+        <div class="panel-header" style="margin-bottom:20px;">
+          <h2>🌍 Microplastics &amp; Environmental Impact — Scientific Reference</h2>
+        </div>
+
+        <div class="evs-grid">
+
+          <div class="evs-card evs-card-danger">
+            <div class="evs-card-header">⚠️ What are Microplastics?</div>
+            <div class="evs-card-body">
+              <p>Microplastics are plastic particles <strong>smaller than 5 millimetres</strong> in size. They are classified as:</p>
+              <ul>
+                <li><strong>Primary microplastics</strong> — manufactured at micro-size (microbeads in cosmetics, industrial pellets)</li>
+                <li><strong>Secondary microplastics</strong> — formed by breakdown of larger plastics through UV radiation, wave action, and weathering</li>
+              </ul>
+              <div class="evs-fact-box">💡 Fact: Over <strong>8 million tonnes</strong> of plastic enter our oceans every year.</div>
+            </div>
+          </div>
+
+          <div class="evs-card evs-card-blue">
+            <div class="evs-card-header">🔬 Morphology Types Detected by This Tool</div>
+            <div class="evs-card-body">
+              <div class="morph-table">
+                <div class="morph-row"><span class="morph-badge fiber">Fiber</span><span>From synthetic clothing (polyester, nylon) — released during washing</span></div>
+                <div class="morph-row"><span class="morph-badge fragment">Fragment</span><span>From broken plastic items — bottles, containers, packaging</span></div>
+                <div class="morph-row"><span class="morph-badge pellet">Pellet</span><span>Industrial nurdles — raw material used in plastic manufacturing</span></div>
+                <div class="morph-row"><span class="morph-badge film">Film</span><span>From plastic bags, food wrappers, agricultural plastic mulch</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="evs-card evs-card-green">
+            <div class="evs-card-header">📏 Size Classification Standards (ISO)</div>
+            <div class="evs-card-body">
+              <div class="size-class-list">
+                <div class="size-class-row"><span class="size-tag nano">Nanoplastic</span><span>&lt; 1 µm — can cross cell membranes, enter bloodstream</span></div>
+                <div class="size-class-row"><span class="size-tag small">Small Micro</span><span>1–100 µm — can be ingested by plankton, small fish</span></div>
+                <div class="size-class-row"><span class="size-tag large">Large Micro</span><span>100–1000 µm — ingested by fish, seabirds, marine mammals</span></div>
+                <div class="size-class-row"><span class="size-tag meso">Mesoplastic</span><span>&gt; 1000 µm — visible to naked eye, entanglement risk</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="evs-card evs-card-purple">
+            <div class="evs-card-header">🧬 Health Effects on Humans</div>
+            <div class="evs-card-body">
+              <p>Humans ingest an estimated <strong>5 grams of microplastics per week</strong> — equivalent to a credit card.</p>
+              <ul>
+                <li>Found in human blood, lung tissue, placenta, and colon</li>
+                <li>Carry toxic chemicals: BPA, phthalates, PCBs</li>
+                <li>Act as vectors for pathogens and heavy metals</li>
+                <li>Linked to inflammation, hormonal disruption, and cancer risk</li>
+              </ul>
+              <div class="evs-fact-box">⚠️ WHO (2019): Microplastics detected in <strong>93% of bottled water</strong> samples globally.</div>
+            </div>
+          </div>
+
+          <div class="evs-card evs-card-ocean">
+            <div class="evs-card-header">🐋 Marine Ecosystem Impact</div>
+            <div class="evs-card-body">
+              <p>Marine life is severely affected at every level of the food chain:</p>
+              <ul>
+                <li><strong>Phytoplankton &amp; Zooplankton</strong> — confuse microplastics for food, reducing caloric intake</li>
+                <li><strong>Fish</strong> — gut blockage, toxin accumulation in muscle tissue</li>
+                <li><strong>Seabirds</strong> — feed plastic to chicks, 90% of seabird species affected</li>
+                <li><strong>Whales &amp; Dolphins</strong> — stomach blockage, starvation</li>
+              </ul>
+              <div class="evs-fact-box">🌊 By 2050, there will be <strong>more plastic than fish</strong> in the ocean by weight (Ellen MacArthur Foundation).</div>
+            </div>
+          </div>
+
+          <div class="evs-card evs-card-solution">
+            <div class="evs-card-header">✅ Solutions &amp; Prevention</div>
+            <div class="evs-card-body">
+              <ul>
+                <li>🚫 Ban single-use plastics and microbeads in cosmetics</li>
+                <li>♻️ Improve plastic recycling infrastructure globally</li>
+                <li>🧪 Develop biodegradable plastic alternatives</li>
+                <li>🔬 Use AI tools like MicroDetect to monitor water quality</li>
+                <li>🏭 Install microplastic filters in wastewater treatment plants</li>
+                <li>🧺 Use washing bags (e.g. Guppyfriend) to catch synthetic fibers</li>
+              </ul>
+              <div class="evs-fact-box">🎯 This project uses <strong>YOLOv8 AI</strong> to automate microplastic detection — a key step in environmental monitoring.</div>
+            </div>
+          </div>
+
+        </div><!-- /evs-grid -->
+
+        <div class="evs-references">
+          <strong>📚 References &amp; Standards:</strong>
+          WHO (2019) · ISO 5667 Water Quality Standards · GESAMP (2016) Microplastics in the Ocean · Rochman et al. (2019) Nature · Thompson et al. (2004) Science · Ellen MacArthur Foundation (2016)
+        </div>
+
+      </section>
+    </div><!-- /paneEVS -->
+
+    <!-- ================================================================
+         SCAN HISTORY PANE
+         ================================================================ -->
+    <div id="paneHistory" class="tab-pane">
+      <section class="history-panel" style="padding: 24px; max-width: 1200px; margin: 0 auto;">
+        <div class="panel-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">📅 Session Scan History</h2>
+            <p style="color: var(--text-secondary); font-size: 13px;">Review previous microplastic detection results from this session.</p>
+          </div>
+          <button class="icon-btn highlight" id="clearAllHistoryBtn" style="padding: 8px 16px; font-size: 13px;">🗑️ Clear History</button>
+        </div>
+        
+        <!-- History Trend Chart -->
+        <div class="chart-card" style="margin-bottom: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
+          <h3 class="chart-title" style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px;">Detection Trend (Current Session)</h3>
+          <div class="chart-wrap" style="height: 240px; position: relative;">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- History Table -->
+        <div class="data-table-wrap" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;">
+          <table class="data-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--bg-elevated); border-bottom: 1px solid var(--border);">
+                <th style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Timestamp</th>
+                <th style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Sample</th>
+                <th style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Total Particles</th>
+                <th style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Avg Size (µm)</th>
+                <th style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Hazard Level</th>
+                <th style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-disabled); padding: 40px; font-size: 13px;">
+                  <div style="font-size: 32px; margin-bottom: 12px;">📭</div>
+                  No scans performed in this session yet. Upload a sample to begin tracking.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div><!-- /paneHistory -->
+
+    <!-- ================================================================
+         LAB REPORT PANE
+         ================================================================ -->
+    <div id="paneReport" class="tab-pane">
+      <section class="report-panel">
+        <div class="panel-header" style="margin-bottom:20px;">
+          <h2>📝 Auto-Generated Scientific Lab Report</h2>
+          <div style="display:flex;gap:8px;">
+            <button class="icon-btn highlight" id="printReportBtn">🖨️ Print Report</button>
+            <button class="icon-btn" id="copyReportBtn">📋 Copy Text</button>
+          </div>
+        </div>
+
+        <div class="report-container" id="reportContainer">
+          <div class="report-empty" id="reportEmpty">
+            <div style="font-size:2.8rem;margin-bottom:12px;">📋</div>
+            <p>Run a detection first to auto-generate your scientific lab report here.</p>
+          </div>
+          <div class="report-doc" id="reportDoc" style="display:none;">
+            <div class="report-header-section">
+              <div class="report-logo">
+                <svg width="44" height="44" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 2L35.5885 11V29L20 38L4.41154 29V11L20 2Z" stroke="#2DD4BF" stroke-width="2.5" fill="rgba(45,212,191,0.1)"/>
+                  <circle cx="20" cy="20" r="10" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="3 2"/>
+                  <circle cx="20" cy="20" r="4" fill="#2DD4BF"/>
+                  <line x1="20" y1="6" x2="20" y2="10" stroke="#2DD4BF" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="20" y1="30" x2="20" y2="34" stroke="#2DD4BF" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="6" y1="20" x2="10" y2="20" stroke="#2DD4BF" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="30" y1="20" x2="34" y2="20" stroke="#2DD4BF" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <h1 class="report-title">Microplastic Detection Lab Report</h1>
+                <p class="report-subtitle">AI-Powered Microplastic Detection &amp; Environmental Monitoring System</p>
+                <p class="report-meta" id="reportMeta"></p>
+              </div>
+            </div>
+            <hr class="report-divider">
+            <h2 class="report-section-title">1. Abstract</h2>
+            <p class="report-text" id="reportAbstract"></p>
+            <h2 class="report-section-title">2. Detection Results Summary</h2>
+            <div class="report-kpi-grid" id="reportKpiGrid"></div>
+            <h2 class="report-section-title">3. Statistical Analysis</h2>
+            <p class="report-text" id="reportStats"></p>
+            <h2 class="report-section-title">4. Morphological Classification</h2>
+            <p class="report-text" id="reportMorphology"></p>
+            <h2 class="report-section-title">5. Environmental Impact Assessment</h2>
+            <p class="report-text" id="reportEnvironmental"></p>
+            <h2 class="report-section-title">6. WHO Safety Compliance</h2>
+            <p class="report-text" id="reportWHO"></p>
+            <h2 class="report-section-title">7. Recommendations</h2>
+            <ul class="report-list" id="reportRecommendations"></ul>
+            <h2 class="report-section-title">8. Conclusion</h2>
+            <p class="report-text" id="reportConclusion"></p>
+            <hr class="report-divider">
+            <p class="report-footer-text">Generated by MicroDetect AI — YOLOv8 Computer Vision · Environmental Science Project · <span id="reportDate"></span></p>
+          </div>
+        </div>
+
+      </section>
+    </div><!-- /paneReport -->
+
+    <!-- ================================================================
+         FLOATING AI CHATBOT
+         ================================================================ -->
+    <!-- ================================================================
+         FLOATING AI CHATBOT (Enhanced AI Assistant)
+         ================================================================ -->
+    <div class="chatbot-wrapper" id="chatbotWrapper">
+      <div class="chatbot-panel" id="chatbotPanel" style="display:none;">
+        
+        <!-- Glowing Top Bar -->
+        <div class="chatbot-top-bar"></div>
+
+        <!-- Header -->
+        <div class="chatbot-header">
+          <div class="chatbot-header-left">
+            <div class="chatbot-avatar-header">
+              <svg width="18" height="18" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2L35.5885 11V29L20 38L4.41154 29V11L20 2Z" stroke="#2DD4BF" stroke-width="3" fill="rgba(45,212,191,0.2)"/>
+                <circle cx="20" cy="20" r="5" fill="#2DD4BF"/>
+              </svg>
+            </div>
+            <div>
+              <div class="chatbot-title">
+                MicroDetect AI
+                <span class="chat-status-tag"><span class="chat-status-dot"></span> Online</span>
+              </div>
+              <div class="chatbot-subtitle">YOLOv8 + Gemini Vision Assistant</div>
+            </div>
+          </div>
+          <div class="chatbot-header-actions">
+            <button class="chatbot-action-btn" id="chatExplainScanBtn" title="Analyze active scan sample">🔬 Scan Summary</button>
+            <button class="chatbot-action-btn icon-only" id="chatApiKeyBtn" title="Set Gemini API Key for Unlimited Questions">🔑</button>
+            <button class="chatbot-action-btn icon-only" id="chatClearBtn" title="Clear chat history">🧹</button>
+            <button class="chatbot-close" id="chatbotClose" title="Close chat">✕</button>
+          </div>
+        </div>
+
+        <!-- Category Quick Tabs -->
+        <div class="chat-category-tabs">
+          <button class="chat-tab active" data-cat="all">✨ Popular</button>
+          <button class="chat-tab" data-cat="detect">🔬 Detection</button>
+          <button class="chat-tab" data-cat="safety">⚠️ WHO Safety</button>
+          <button class="chat-tab" data-cat="polymers">🧪 Polymers</button>
+          <button class="chat-tab" data-cat="env">🌍 Eco-Impact</button>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chatbot-messages" id="chatbotMessages">
+          <div class="chat-msg bot">
+            <div class="chat-avatar-wrap">🔬</div>
+            <div class="chat-body">
+              <div class="chat-bubble">
+                 👋 Hello! I'm your <strong>MicroDetect AI Scientific Assistant</strong>.
+                <br><br>
+                Ask me anything about <strong>microplastics identification</strong>, WHO safety limits, polymer types, or click <strong>🔬 Scan Summary</strong> to analyze your active sample!
+              </div>
+              <div class="chat-time">Just now</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Row with Voice Search -->
+        <div class="chatbot-input-row">
+          <button class="chat-input-btn" id="chatMicBtn" title="Click to speak (Voice Input)">🎙️</button>
+          <input type="text" id="chatInput" placeholder="Ask about microplastics, WHO standards, polymers..." autocomplete="off">
+          <button id="chatSendBtn" title="Send message">➤</button>
+        </div>
+
+        <!-- Prompt Suggestions -->
+        <div class="chatbot-suggestions" id="chatbotSuggestions">
+          <button class="chat-suggest" data-cat="detect" data-q="What are microplastics?">🔬 What are microplastics?</button>
+          <button class="chat-suggest" data-cat="safety" data-q="WHO water standard?">⚠️ WHO Water Safety limits?</button>
+          <button class="chat-suggest" data-cat="detect" data-q="How to test a sample?">📷 How to scan a sample?</button>
+          <button class="chat-suggest" data-cat="polymers" data-q="Fibers vs Fragments?">🧵 Fibers vs Fragments?</button>
+          <button class="chat-suggest" data-cat="detect" data-q="What is confidence score?">📊 How AI confidence works?</button>
+          <button class="chat-suggest" data-cat="detect" data-q="How to get Lab Report?">📝 Download Lab Report PDF?</button>
+          <button class="chat-suggest" data-cat="polymers" data-q="PET vs Polyethylene risk?">🧪 PET vs PE Microplastics?</button>
+          <button class="chat-suggest" data-cat="safety" data-q="How to filter microplastics?">💧 How to filter drinking water?</button>
+          <button class="chat-suggest" data-cat="env" data-q="Marine life threat?">🐠 Microplastics in marine food chain?</button>
+        </div>
+
+      </div>
+
+      <!-- Pulse Floating Action Button (FAB) -->
+      <button class="chatbot-fab" id="chatbotFab" title="Open MicroDetect AI Assistant">
+        <span class="fab-pulse-ring"></span>
+        <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2L35.5885 11V29L20 38L4.41154 29V11L20 2Z" stroke="#0B0F17" stroke-width="3.5" fill="none"/>
+          <circle cx="20" cy="20" r="5" fill="#0B0F17"/>
+        </svg>
+        <span class="chatbot-badge" id="chatbotBadge" style="display:none;">1</span>
+      </button>
+    </div>
+
+    <!-- ================================================================
+         FOOTER
+         ================================================================ -->
+    <footer class="app-footer">
+      AI-Powered Microplastic Detection &amp; Recognition for Environmental Monitoring · YOLOv8 Computer Vision · Micrometer Morphological Analysis · Environmental Science Project
+    </footer>
+
+  </div><!-- /app-shell -->
+
+  <!-- ================================================================
+       PARTICLE DETAIL MODAL
+       ================================================================ -->
+  <div class="modal-overlay" id="particleModal" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🔬 Particle Detail — <span id="modalParticleId"></span></h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div class="modal-stat"><div class="modal-stat-label">Class</div><div class="modal-stat-val" id="modalClass"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Morphology</div><div class="modal-stat-val" id="modalMorphology"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Size Band</div><div class="modal-stat-val" id="modalSizeBand"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Confidence</div><div class="modal-stat-val cyan" id="modalConfidence"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Width</div><div class="modal-stat-val" id="modalWidth"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Height</div><div class="modal-stat-val" id="modalHeight"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Area</div><div class="modal-stat-val" id="modalArea"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Aspect Ratio</div><div class="modal-stat-val" id="modalAspect"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">Roundness</div><div class="modal-stat-val" id="modalRoundness"></div></div>
+          <div class="modal-stat"><div class="modal-stat-label">BBox (px)</div><div class="modal-stat-val" id="modalBbox" style="font-size:11px;"></div></div>
+        </div>
+        <div class="modal-interpretation" id="modalInterpretation"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- Sync gauge rings with bar widths when app.js updates env bars -->
+  <script>
+    // Animate SVG gauge rings in sync with the env bar fills
+    // Called whenever envWaterBar / envMarineBar / envHealthBar / envPollutionBar width changes
+    (function() {
+      const CIRCUMFERENCE = 151; // 2π × 24
+      const gaugeMap = {
+        envWaterBar:     'envWaterGauge',
+        envMarineBar:    'envMarineGauge',
+        envHealthBar:    'envHealthGauge',
+        envPollutionBar: 'envPollutionGauge'
+      };
+
+      function syncGauges() {
+        Object.keys(gaugeMap).forEach(barId => {
+          const bar = document.getElementById(barId);
+          const gauge = document.getElementById(gaugeMap[barId]);
+          if (!bar || !gauge) return;
+          const pct = parseFloat(bar.style.width) || 0;
+          const offset = CIRCUMFERENCE * (1 - pct / 100);
+          gauge.style.strokeDashoffset = offset;
+        });
+      }
+
+      // Poll every 400ms to catch updates from app.js
+      setInterval(syncGauges, 400);
+      syncGauges();
+    })();
+  </script>
+
+</body>
+</html>

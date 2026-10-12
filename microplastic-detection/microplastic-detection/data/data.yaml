@@ -1,0 +1,9 @@
+# Paths to images (relative to data directory)
+train: ./raw/microplastic_dataset/train/images
+val: ./raw/microplastic_dataset/valid/images
+
+# Number of classes
+nc: 1
+
+# Class names
+names: ['microplastic']

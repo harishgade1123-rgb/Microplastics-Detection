@@ -1,0 +1,23 @@
+# Environment & Secrets
+.env
+*.env
+.env.*
+
+
+# Ignore Python virtual environments
+.venv/
+yolov8_env/
+
+# Ignore YOLO run outputs
+runs/
+**/runs/
+
+# Ignore Python cache and temporary files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore large files
+*.zip
+*.dll
+*.pyd

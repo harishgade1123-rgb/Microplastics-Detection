@@ -1,0 +1,14 @@
+{
+  "python.defaultInterpreterPath": "C:/Users/HARISH SUKHADEV GADE/AppData/Local/Programs/Python/Python314/python.exe",
+  "python.languageServer": "Pylance",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}",
+    "C:/Users/HARISH SUKHADEV GADE/AppData/Local/Programs/Python/Python314/Lib/site-packages"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}",
+    "C:/Users/HARISH SUKHADEV GADE/AppData/Local/Programs/Python/Python314/Lib/site-packages"
+  ]
+}
+
+

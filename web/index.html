@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MicroDetect AI | Next-Gen Microplastic Recognition</title>
+  <meta name="description" content="AI-Powered Microplastic Detection and Recognition system for environmental monitoring.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='40' y2='40'%3E%3Cstop offset='0%25' stop-color='%232DD4BF'/%3E%3Cstop offset='100%25' stop-color='%2322D3EE'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 2L35.5 11V29L20 38L4.5 29V11L20 2Z' stroke='url(%23g)' stroke-width='3' fill='%230B0F17'/%3E%3Ccircle cx='20' cy='20' r='5' fill='%232DD4BF'/%3E%3C/svg%3E">
+  
+  <style>
+    :root {
+      --bg: #0B0F17;
+      --bg-surface: #11161F;
+      --primary: #2DD4BF;
+      --secondary: #38BDF8;
+      --accent-purple: #8B5CF6;
+      --text-main: #E8EBF0;
+      --text-muted: #8A93A6;
+      --glass-bg: rgba(17, 22, 31, 0.6);
+      --glass-border: rgba(36, 43, 58, 0.95);
+      --glass-glow: rgba(45, 212, 191, 0.15);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    /* Animated Background Orbs */
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      z-index: -1;
+      opacity: 0.4;
+      animation: float 20s infinite ease-in-out alternate;
+    }
+    .orb-1 {
+      top: -10%; left: -10%; width: 500px; height: 500px;
+      background: radial-gradient(circle, var(--primary), transparent 70%);
+    }
+    .orb-2 {
+      top: 40%; right: -20%; width: 600px; height: 600px;
+      background: radial-gradient(circle, var(--accent-purple), transparent 70%);
+      animation-delay: -5s;
+    }
+    .orb-3 {
+      bottom: -10%; left: 20%; width: 400px; height: 400px;
+      background: radial-gradient(circle, var(--secondary), transparent 70%);
+      animation-delay: -10s;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(50px, 50px) scale(1.1); }
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 0;
+      position: relative;
+      z-index: 100;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    
+    .logo span {
+      font-weight: 800;
+      font-size: 20px;
+      color: white;
+      letter-spacing: -0.5px;
+    }
+    
+    .logo span span {
+      color: var(--primary);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 32px;
+      border-radius: 100px;
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(12px);
+    }
+    
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+    
+    .nav-links a:hover {
+      color: white;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #000;
+      font-weight: 700;
+      padding: 12px 28px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 25px rgba(45, 212, 191, 0.3);
+      border: none;
+      cursor: pointer;
+    }
+    
+    .btn-start:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(45, 212, 191, 0.5);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 140px 0 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(45, 212, 191, 0.1);
+      border: 1px solid rgba(45, 212, 191, 0.2);
+      color: var(--primary);
+      padding: 6px 16px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 32px;
+      backdrop-filter: blur(8px);
+    }
+
+    .hero h1 {
+      font-size: 72px;
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -2.5px;
+      margin-bottom: 24px;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      max-width: 900px;
+    }
+    
+    .hero h1 span {
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: var(--text-muted);
+      max-width: 650px;
+      margin: 0 auto 48px;
+      line-height: 1.6;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .btn-secondary {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: white;
+      font-weight: 600;
+      padding: 12px 28px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(12px);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Dashboard Preview Graphic */
+    .hero-graphic {
+      margin-top: 80px;
+      position: relative;
+      width: 100%;
+      max-width: 1100px;
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      background: rgba(10, 15, 28, 0.6);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 100px rgba(45, 212, 191, 0.15);
+      overflow: hidden;
+      transform: perspective(1000px) rotateX(2deg);
+      transition: transform 0.5s ease;
+    }
+    
+    .hero-graphic:hover {
+      transform: perspective(1000px) rotateX(0deg) translateY(-10px);
+    }
+
+    .browser-header {
+      height: 40px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 8px;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-1 { background: #EF4444; }
+    .dot-2 { background: #F59E0B; }
+    .dot-3 { background: #10B981; }
+
+    .graphic-content {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .mock-img {
+      background: #111827;
+      border-radius: 12px;
+      aspect-ratio: 16/9;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+    }
+    
+    .mock-bbox {
+      position: absolute;
+      border: 2px solid var(--primary);
+      background: rgba(45, 212, 191, 0.1);
+      border-radius: 4px;
+      animation: pulse 2s infinite;
+    }
+    
+    .bbox-1 { top: 30%; left: 20%; width: 100px; height: 100px; }
+    .bbox-2 { top: 50%; left: 60%; width: 80px; height: 40px; border-color: var(--secondary); background: rgba(56, 189, 248, 0.1); }
+    .bbox-3 { top: 20%; left: 70%; width: 50px; height: 50px; border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.1); }
+
+    .mock-tag {
+      position: absolute;
+      top: -24px;
+      left: -2px;
+      background: var(--primary);
+      color: #000;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+    .bbox-2 .mock-tag { background: var(--secondary); }
+    .bbox-3 .mock-tag { background: var(--accent-purple); }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(45, 212, 191, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); }
+    }
+
+    .mock-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .mock-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    
+    .mock-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 12px; overflow: hidden; }
+    .mock-bar-fill { height: 100%; background: var(--primary); width: 75%; }
+
+    /* Section Headings */
+    .section { padding: 120px 0; }
+    .section-header { text-align: center; margin-bottom: 64px; }
+    .section-tag { color: var(--primary); font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: block; }
+    .section-title { font-size: 48px; font-weight: 800; letter-spacing: -1px; margin-bottom: 24px; }
+    .section-desc { color: var(--text-muted); font-size: 18px; max-width: 700px; margin: 0 auto; line-height: 1.6; }
+
+    /* How It Works Steps */
+    .steps-container {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      position: relative;
+    }
+    
+    .step-box {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 32px 24px;
+      text-align: center;
+      position: relative;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+    }
+    
+    .step-box:hover {
+      transform: translateY(-10px);
+      border-color: var(--primary);
+      box-shadow: 0 20px 40px var(--glass-glow);
+    }
+
+    .step-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      transition: all 0.3s ease;
+    }
+    
+    .step-box:hover .step-icon {
+      background: var(--primary);
+      color: #000;
+      border-color: var(--primary);
+    }
+
+    .step-title { font-weight: 700; font-size: 18px; margin-bottom: 12px; }
+    .step-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+    .step-num { position: absolute; top: -12px; right: -12px; background: var(--secondary); color: #000; font-weight: 800; font-family: 'IBM Plex Mono', monospace; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid var(--bg-surface); }
+
+    /* Bento Grid Features */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: auto auto;
+      gap: 24px;
+    }
+    
+    .bento-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 32px;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .bento-card:hover {
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.15);
+    }
+    
+    .bento-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .bento-card:hover::before { opacity: 1; }
+
+    .bento-card.large { grid-column: span 2; }
+    
+    .bento-icon { font-size: 32px; margin-bottom: 24px; }
+    .bento-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #fff; }
+    .bento-desc { color: var(--text-muted); line-height: 1.6; font-size: 15px; }
+
+    /* Final CTA */
+    .cta-box {
+      background: linear-gradient(135deg, rgba(45,212,191,0.1), rgba(56,189,248,0.1));
+      border: 1px solid rgba(45, 212, 191, 0.3);
+      border-radius: 24px;
+      padding: 80px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .cta-box::before {
+      content: ''; position: absolute; inset: 0; background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjE1KSIvPjwvc3ZnPg==');
+      opacity: 0.5;
+    }
+    
+    .cta-box h2 { font-size: 48px; font-weight: 800; margin-bottom: 24px; position: relative; }
+    .cta-box p { font-size: 18px; color: var(--text-muted); margin-bottom: 40px; position: relative; }
+    .cta-box .btn-start { font-size: 18px; padding: 16px 40px; position: relative; }
+
+    footer {
+      border-top: 1px solid var(--glass-border);
+      padding: 40px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Tabs Compartment */
+    .compartment-container {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 32px;
+      backdrop-filter: blur(20px);
+      margin-top: 40px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+    }
+    .tabs-header {
+      display: flex;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 16px;
+      margin-bottom: 32px;
+      overflow-x: auto;
+    }
+    .tabs-header::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      color: white;
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.1);
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #000;
+      border-color: var(--primary);
+    }
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s ease forwards;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1024px) {
+      .steps-container { grid-template-columns: repeat(3, 1fr); }
+      .bento-grid { grid-template-columns: repeat(2, 1fr); }
+      .bento-card.large { grid-column: span 1; }
+    }
+    
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 48px; }
+      .graphic-content { grid-template-columns: 1fr; }
+      .steps-container { grid-template-columns: 1fr; }
+      .bento-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Glow -->
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <div class="container">
+    
+    <!-- NAVIGATION -->
+    <nav class="navbar">
+      <a href="#" class="logo">
+        <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2L35.5885 11V29L20 38L4.41154 29V11L20 2Z" stroke="#2DD4BF" stroke-width="2.5" fill="rgba(45,212,191,0.2)"/>
+          <circle cx="20" cy="20" r="10" stroke="#38BDF8" stroke-width="1.8" stroke-dasharray="3 2"/>
+          <circle cx="20" cy="20" r="4" fill="#2DD4BF"/>
+        </svg>
+        <span>MicroDetect<span>AI</span></span>
+      </a>
+      
+      <div class="nav-links">
+        <a href="#explore">Explore Platform</a>
+      </div>
+      
+      <a href="/dashboard.html" class="btn-start">Start Detection</a>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+      <div class="hero-badge">
+        <span style="display:inline-block; width:8px; height:8px; background:var(--primary); border-radius:50%; box-shadow:0 0 10px var(--primary);"></span>
+        YOLOv8 & Gemini 2.0 AI Integrated
+      </div>
+      
+      <h1>AI-Powered Microplastic <br><span>Detection & Recognition</span></h1>
+      <p>Automated microscopic image analysis for detecting, sizing, and classifying microplastic particles instantly using state-of-the-art computer vision models.</p>
+      
+      <div class="hero-cta">
+        <a href="/dashboard.html" class="btn-start" style="padding: 16px 36px; font-size: 16px;">Launch Dashboard</a>
+        <a href="#explore" class="btn-secondary" style="padding: 16px 36px; font-size: 16px;">See How It Works</a>
+      </div>
+
+    </section>
+
+    <!-- COMPARTMENT SECTION (TABS) -->
+    <section id="explore" class="section">
+      <div class="section-header">
+        <span class="section-tag">Interactive Guide</span>
+        <h2 class="section-title">Explore the Platform</h2>
+        <p class="section-desc">Select a category below to learn about the environmental context, workflow, and capabilities.</p>
+      </div>
+      
+      <div class="compartment-container">
+        <!-- Tabs Header -->
+        <div class="tabs-header">
+          <button class="tab-btn" onclick="openTab(event, 'tab-env')">🌍 Environmental Crisis</button>
+          <button class="tab-btn" onclick="openTab(event, 'tab-workflow')">🔄 Workflow</button>
+          <button class="tab-btn" onclick="openTab(event, 'tab-features')">✨ Capabilities</button>
+          <button class="tab-btn" onclick="openTab(event, 'tab-guide')">🔰 Beginner's Guide</button>
+        </div>
+        
+        <!-- Tab 1: Environment -->
+        <div id="tab-env" class="tab-content">
+          <div class="bento-grid" style="grid-template-columns: repeat(2, 1fr); gap: 24px;">
+            <div class="bento-card" style="border-top: 3px solid #EF4444;">
+              <h3 class="bento-title" style="color: #EF4444; font-size: 18px;">⚠️ What are Microplastics?</h3>
+              <p class="bento-desc" style="margin-bottom:8px;">Microplastics are plastic particles <strong>smaller than 5 millimetres</strong> in size. They are classified as:</p>
+              <ul class="bento-desc" style="margin-left: 20px; margin-bottom: 12px;">
+                <li><strong>Primary microplastics</strong> — manufactured at micro-size (microbeads in cosmetics, industrial pellets)</li>
+                <li><strong>Secondary microplastics</strong> — formed by breakdown of larger plastics through UV radiation, wave action, and weathering</li>
+              </ul>
+              <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; font-size: 14px; border-left: 3px solid #EF4444;">💡 Fact: Over <strong>8 million tonnes</strong> of plastic enter our oceans every year.</div>
+            </div>
+            
+            <div class="bento-card" style="border-top: 3px solid #38BDF8;">
+              <h3 class="bento-title" style="color: #38BDF8; font-size: 18px;">🔬 Morphology Types Detected</h3>
+              <ul class="bento-desc" style="margin-left: 20px;">
+                <li style="margin-bottom: 6px;"><strong>Fiber:</strong> From synthetic clothing (polyester, nylon) — released during washing</li>
+                <li style="margin-bottom: 6px;"><strong>Fragment:</strong> From broken plastic items — bottles, containers, packaging</li>
+                <li style="margin-bottom: 6px;"><strong>Pellet:</strong> Industrial nurdles — raw material used in plastic manufacturing</li>
+                <li><strong>Film:</strong> From plastic bags, food wrappers, agricultural plastic mulch</li>
+              </ul>
+            </div>
+
+            <div class="bento-card" style="border-top: 3px solid #10B981;">
+              <h3 class="bento-title" style="color: #10B981; font-size: 18px;">📏 Size Classification Standards</h3>
+              <ul class="bento-desc" style="margin-left: 20px;">
+                <li style="margin-bottom: 6px;"><strong>Nanoplastic (&lt; 1 µm):</strong> can cross cell membranes, enter bloodstream</li>
+                <li style="margin-bottom: 6px;"><strong>Small Micro (1–100 µm):</strong> can be ingested by plankton, small fish</li>
+                <li style="margin-bottom: 6px;"><strong>Large Micro (100–1000 µm):</strong> ingested by fish, seabirds, marine mammals</li>
+                <li><strong>Mesoplastic (&gt; 1000 µm):</strong> visible to naked eye, entanglement risk</li>
+              </ul>
+            </div>
+            
+            <div class="bento-card" style="border-top: 3px solid #8B5CF6;">
+              <h3 class="bento-title" style="color: #8B5CF6; font-size: 18px;">🧬 Health Effects on Humans</h3>
+              <p class="bento-desc" style="margin-bottom:8px;">Humans ingest an estimated <strong>5 grams of microplastics per week</strong> — equivalent to a credit card.</p>
+              <ul class="bento-desc" style="margin-left: 20px; margin-bottom: 12px;">
+                <li>Found in human blood, lung tissue, placenta, and colon</li>
+                <li>Carry toxic chemicals: BPA, phthalates, PCBs</li>
+                <li>Linked to inflammation, hormonal disruption, and cancer risk</li>
+              </ul>
+              <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; font-size: 14px; border-left: 3px solid #8B5CF6;">⚠️ WHO (2019): Microplastics detected in <strong>93% of bottled water</strong> samples globally.</div>
+            </div>
+            
+            <div class="bento-card" style="border-top: 3px solid #0EA5E9;">
+              <h3 class="bento-title" style="color: #0EA5E9; font-size: 18px;">🐋 Marine Ecosystem Impact</h3>
+              <p class="bento-desc" style="margin-bottom:8px;">Marine life is severely affected at every level of the food chain:</p>
+              <ul class="bento-desc" style="margin-left: 20px; margin-bottom: 12px;">
+                <li><strong>Phytoplankton &amp; Zooplankton:</strong> confuse microplastics for food, reducing caloric intake</li>
+                <li><strong>Fish &amp; Seabirds:</strong> gut blockage, toxin accumulation, 90% of seabird species affected</li>
+              </ul>
+              <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; font-size: 14px; border-left: 3px solid #0EA5E9;">🌊 By 2050, there will be <strong>more plastic than fish</strong> in the ocean by weight.</div>
+            </div>
+
+            <div class="bento-card" style="border-top: 3px solid #F59E0B;">
+              <h3 class="bento-title" style="color: #F59E0B; font-size: 18px;">✅ Solutions &amp; Prevention</h3>
+              <ul class="bento-desc" style="margin-left: 20px; margin-bottom: 12px;">
+                <li>🚫 Ban single-use plastics and microbeads in cosmetics</li>
+                <li>♻️ Improve plastic recycling infrastructure globally</li>
+                <li>🧪 Develop biodegradable plastic alternatives</li>
+                <li>🏭 Install microplastic filters in wastewater treatment plants</li>
+              </ul>
+              <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; font-size: 14px; border-left: 3px solid #F59E0B;">🎯 This project uses <strong>YOLOv8 AI</strong> to automate microplastic detection — a key step in environmental monitoring.</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tab 2: Workflow -->
+        <div id="tab-workflow" class="tab-content">
+          <div class="steps-container">
+            <div class="step-box"><div class="step-num">1</div><div class="step-icon">🔬</div><h3 class="step-title">Upload Image</h3><p class="step-desc">Drag and drop your high-resolution microscopic image or capture a live sample using your web camera.</p></div>
+            <div class="step-box"><div class="step-num">2</div><div class="step-icon">📏</div><h3 class="step-title">Calibration</h3><p class="step-desc">Select the optical magnification preset (e.g., 20x for 1.5µm/px) so the AI can calculate exact physical dimensions.</p></div>
+            <div class="step-box"><div class="step-num">3</div><div class="step-icon">🤖</div><h3 class="step-title">AI Engine</h3><p class="step-desc">Choose between the YOLOv8 Object Detection Engine or the advanced Google Gemini Multimodal Engine.</p></div>
+            <div class="step-box"><div class="step-num">4</div><div class="step-icon">📊</div><h3 class="step-title">Inference</h3><p class="step-desc">The AI scans the sample in milliseconds, draws precision bounding boxes, and tags morphology classes.</p></div>
+            <div class="step-box"><div class="step-num">5</div><div class="step-icon">📑</div><h3 class="step-title">Lab Report</h3><p class="step-desc">Generate a comprehensive ISO-compliant PDF Lab Report containing size histograms and contamination metrics.</p></div>
+          </div>
+        </div>
+        
+        <!-- Tab 3: Features -->
+        <div id="tab-features" class="tab-content">
+          <div class="bento-grid">
+            <div class="bento-card large">
+              <div class="bento-icon">🧠</div>
+              <h3 class="bento-title">Hybrid AI Engine (YOLO + Gemini)</h3>
+              <p class="bento-desc">Combines the raw speed of Ultralytics YOLOv8 for sub-millisecond particle detection with the multimodal reasoning capabilities of Google Gemini 2.0 to estimate polymer types and environmental risk factors.</p>
+            </div>
+            <div class="bento-card">
+              <div class="bento-icon">📏</div>
+              <h3 class="bento-title">Micrometer Sizing</h3>
+              <p class="bento-desc">Automatically calculates physical dimensions, aspect ratios, and surface areas (µm²) using custom optical calibration.</p>
+            </div>
+            <div class="bento-card">
+              <div class="bento-icon">🧵</div>
+              <h3 class="bento-title">Morphology Classification</h3>
+              <p class="bento-desc">Intelligently categorizes particles into scientific groups: Fragments, Fibers, Pellets/Nurdles, and Films.</p>
+            </div>
+            <div class="bento-card">
+              <div class="bento-icon">📦</div>
+              <h3 class="bento-title">Batch Processing</h3>
+              <p class="bento-desc">Upload hundreds of sample images simultaneously for asynchronous bulk analysis and aggregate reporting.</p>
+            </div>
+            <div class="bento-card">
+              <div class="bento-icon">📑</div>
+              <h3 class="bento-title">Scientific Export</h3>
+              <p class="bento-desc">Download complete PDF laboratory reports with histograms, pie charts, and raw JSON/CSV boundary coordinates.</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tab 4: Beginner Guide -->
+        <div id="tab-guide" class="tab-content">
+          <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: start;">
+            <div>
+              <p style="color: var(--text-muted); font-size: 16px; margin-bottom: 24px;">Welcome to MicroDetect AI! This platform is designed to be highly intuitive for both researchers and beginners. Follow this step-by-step tutorial to run your first successful scan.</p>
+              <ol style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 24px;">
+                <li style="display: flex; gap: 16px;"><div style="background: var(--primary); color: #000; font-weight: 800; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</div><div><strong style="color: #fff; font-size: 18px; display: block; margin-bottom: 6px;">Launch the Dashboard</strong><span style="color: var(--text-muted); line-height: 1.5; font-size: 15px;">Click the <strong>Start Detection</strong> button. You will be taken to the Single Analysis workspace where all processing happens.</span></div></li>
+                <li style="display: flex; gap: 16px;"><div style="background: var(--primary); color: #000; font-weight: 800; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</div><div><strong style="color: #fff; font-size: 18px; display: block; margin-bottom: 6px;">Load a Sample</strong><span style="color: var(--text-muted); line-height: 1.5; font-size: 15px;">On the left sidebar, locate the <strong>Quick Test Samples</strong> section. Click on "Test Image 2" to instantly load a high-contamination microscopic sample into the canvas.</span></div></li>
+                <li style="display: flex; gap: 16px;"><div style="background: var(--primary); color: #000; font-weight: 800; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</div><div><strong style="color: #fff; font-size: 18px; display: block; margin-bottom: 6px;">Run the AI Model</strong><span style="color: var(--text-muted); line-height: 1.5; font-size: 15px;">Click the glowing cyan <strong>Run AI Detection &amp; Sizing</strong> button. Within milliseconds, YOLOv8 will map every particle on the screen, showing bounding boxes and confidence scores.</span></div></li>
+                <li style="display: flex; gap: 16px;"><div style="background: var(--primary); color: #000; font-weight: 800; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">4</div><div><strong style="color: #fff; font-size: 18px; display: block; margin-bottom: 6px;">Export Your Findings</strong><span style="color: var(--text-muted); line-height: 1.5; font-size: 15px;">Click the <strong>📝 Lab Report</strong> tab at the top of the dashboard. Scroll down and click "Download PDF Report" to save a professional summary of the contamination.</span></div></li>
+              </ol>
+            </div>
+            <div style="background: #0B0F17; border-radius: 16px; border: 1px solid var(--glass-border); padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+              <h3 style="color: #fff; font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">💡 Advanced Tips</h3>
+              <ul style="color: var(--text-muted); font-size: 14px; line-height: 1.7; margin-left: 16px;">
+                <li style="margin-bottom: 8px;"><strong>Batch Mode:</strong> Have hundreds of images? Go to the 📦 Batch Analysis tab to process entire folders at once.</li>
+                <li style="margin-bottom: 8px;"><strong>Ask the AI Assistant:</strong> Use the floating chat button on the bottom right of the dashboard to ask Gemini AI questions about WHO standards or particle toxicity.</li>
+                <li style="margin-bottom: 8px;"><strong>Optical Calibration:</strong> If you use your own images, ensure you set the correct Magnification Preset (e.g. 20x) in the left panel so the µm dimensions are scientifically accurate.</li>
+                <li><strong>Interactive Particles:</strong> You can click on any bounding box on the image canvas to open a detailed morphological breakdown for that specific particle!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- FOOTER -->
+    <footer>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2L35.5885 11V29L20 38L4.41154 29V11L20 2Z" stroke="#2DD4BF" stroke-width="2.5" fill="none"/>
+        </svg>
+        <span style="font-weight:700; color:#fff;">MicroDetect AI</span>
+      </div>
+      <div>
+        &copy; 2026 MicroDetect AI. System designed for Environmental Monitoring.
+      </div>
+    </footer>
+    
+  </div>
+
+  <script>
+    function openTab(evt, tabId) {
+      const isActive = evt.currentTarget.classList.contains('active');
+      
+      // Hide all contents
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      // Unstyle all buttons
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      
+      // Toggle: if it wasn't active, make it active
+      if (!isActive) {
+        // Show targeted content
+        document.getElementById(tabId).classList.add('active');
+        // Highlight button
+        evt.currentTarget.classList.add('active');
+      }
+    }
+  </script>
+</body>
+</html>
