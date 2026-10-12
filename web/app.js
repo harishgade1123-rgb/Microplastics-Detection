@@ -702,6 +702,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ANIMATED KPI COUNT-UP
   // ============================
   function animateCountUp(el, targetVal, isFloat = false, suffix = "") {
+    if (!el) return;
+    const safeTarget = Number.isFinite(targetVal) ? targetVal : 0;
     const duration = 900;
     const start = performance.now();
     const from = 0;
@@ -709,10 +711,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function update(now) {
       const progress = Math.min((now - start) / duration, 1);
       const ease = 1 - Math.pow(1 - progress, 3);
-      const current = from + (targetVal - from) * ease;
+      const current = from + (safeTarget - from) * ease;
       el.textContent = isFloat ? current.toFixed(1) + suffix : Math.round(current) + suffix;
       if (progress < 1) requestAnimationFrame(update);
-      else el.textContent = isFloat ? targetVal.toFixed(1) + suffix : targetVal + suffix;
+      else el.textContent = isFloat ? safeTarget.toFixed(1) + suffix : safeTarget + suffix;
     }
     requestAnimationFrame(update);
   }
@@ -748,25 +750,31 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Animated KPIs with glow pulse (Tasks #2 + #3)
+    // Safety checks for undefined / NaN values
+    const count = Number.isFinite(data.particle_count) ? data.particle_count : (Array.isArray(data.detections) ? data.detections.length : 0);
+    const highConf = Number.isFinite(data.high_conf_count) ? data.high_conf_count : 0;
+    const avgConf = Number.isFinite(data.avg_confidence) ? parseFloat((data.avg_confidence * 100).toFixed(1)) : 0;
+    const risk = data.contamination_risk || (count === 0 ? "Zero Particles Detected" : count < 10 ? "Low Contamination" : count < 30 ? "Moderate Contamination" : "High Contamination Hazard");
+    const riskColor = data.risk_color || (count === 0 ? "#10b981" : count < 10 ? "#3b82f6" : count < 30 ? "#f59e0b" : "#ef4444");
+
+    // Animated KPIs with glow pulse
     document.querySelectorAll(".kpi-card").forEach(c => {
       c.classList.add("has-data");
-      // Remove, force reflow, re-add to restart animation
       c.classList.remove("result-pulse");
       void c.offsetWidth;
       c.classList.add("result-pulse");
       c.addEventListener("animationend", () => c.classList.remove("result-pulse"), { once: true });
     });
-    animateCountUp(kpiCount, data.particle_count);
-    animateCountUp(kpiHighConf, data.high_conf_count);
-    animateCountUp(kpiAvgConf, parseFloat((data.avg_confidence * 100).toFixed(1)), true, "%");
+    animateCountUp(kpiCount, count);
+    animateCountUp(kpiHighConf, highConf);
+    animateCountUp(kpiAvgConf, avgConf, true, "%");
 
     if (kpiRisk) {
-      kpiRisk.textContent = data.contamination_risk;
-      kpiRisk.style.color = data.risk_color || "#f1f5f9";
+      kpiRisk.textContent = risk;
+      kpiRisk.style.color = riskColor;
     }
     if (kpiRiskSub) {
-      kpiRiskSub.textContent = `Evaluated across ${data.particle_count} particle${data.particle_count !== 1 ? "s" : ""}`;
+      kpiRiskSub.textContent = `Evaluated across ${count} particle${count !== 1 ? "s" : ""}`;
     }
 
     if (downloadCsvBtn) downloadCsvBtn.disabled = false;
@@ -810,11 +818,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Toast notification
-    const icon = data.particle_count === 0 ? "✅" : data.particle_count < 10 ? "🔵" : data.particle_count < 30 ? "🟡" : "🔴";
+    const icon = count === 0 ? "✅" : count < 10 ? "🔵" : count < 30 ? "🟡" : "🔴";
     showToast(
       `Detection Complete! ${icon}`,
-      `${data.particle_count} particle${data.particle_count !== 1 ? "s" : ""} found · ${data.contamination_risk}`,
-      data.particle_count === 0 ? "success" : data.particle_count < 10 ? "info" : data.particle_count < 30 ? "warn" : "error",
+      `${count} particle${count !== 1 ? "s" : ""} found · ${risk}`,
+      count === 0 ? "success" : count < 10 ? "info" : count < 30 ? "warn" : "error",
       5000
     );
   }

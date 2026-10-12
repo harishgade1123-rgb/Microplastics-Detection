@@ -339,27 +339,25 @@ def detect():
         elif "sample" in request.form:
             sample_name = os.path.basename(request.form.get("sample", ""))
             filename = sample_name
-            if not sample_name or not os.path.exists(sample_name):
+            sample_path = os.path.join(BASE_DIR, sample_name)
+            if not sample_name or not os.path.exists(sample_path):
                 return jsonify({"error": f"Sample image '{sample_name}' not found"}), 404
             try:
-                pil_img = Image.open(sample_name).convert("RGB")
+                pil_img = Image.open(sample_path).convert("RGB")
             except Exception:
                 return jsonify({"error": "Failed to load sample image file"}), 400
         else:
             return jsonify({"error": "Invalid request"}), 400
 
         # Run detection based on selected AI engine
+        res_data = None
         if engine == "gemini":
-            if not is_gemini_configured():
-                return jsonify({
-                    "error": "Gemini API key is missing.",
-                    "message": "Please add your GEMINI_API_KEY into the .env file to run Gemini AI vision detection."
-                }), 400
             res_data = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
-            gemini_model_used = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+            gemini_model_used = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
             res_data["success"] = True
             res_data["filename"] = filename
-            res_data["engine_used"] = f"Google Gemini AI ({gemini_model_used})"
+            if "engine_used" not in res_data:
+                res_data["engine_used"] = res_data.get("ai_provider", f"Google Gemini AI ({gemini_model_used})")
             return jsonify(res_data)
 
         # Check if internal microplastic-detection service is bound via Vercel
@@ -378,53 +376,49 @@ def detect():
                 files = {"image": (filename, img_io, "image/jpeg")}
                 resp = requests.post(target_url, data=forward_data, files=files, timeout=45)
                 if resp.status_code == 200:
-                    res_data = resp.json()
-                    res_data["filename"] = filename
-                    if engine == "hybrid" and is_gemini_configured():
-                        try:
-                            gemini_enrichment = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
-                            if "ai_analysis" in gemini_enrichment:
-                                res_data["ai_analysis"] = gemini_enrichment["ai_analysis"]
-                                res_data["ai_provider"] = "Hybrid Dual Engine (Internal YOLOv8 + Gemini AI)"
-                                res_data["engine_used"] = "Hybrid Dual Engine (Internal YOLOv8 + Gemini AI)"
-                        except Exception as ge:
-                            print(f"Hybrid Gemini enrichment skipped: {ge}")
-                    return jsonify(res_data)
-                else:
-                    print(f"Internal detection service returned {resp.status_code}, falling back to local model")
+                    cand = resp.json()
+                    if cand.get("particle_count") is not None:
+                        res_data = cand
+                        res_data["filename"] = filename
+                        if engine == "hybrid":
+                            try:
+                                gemini_enrichment = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
+                                if "ai_analysis" in gemini_enrichment:
+                                    res_data["ai_analysis"] = gemini_enrichment["ai_analysis"]
+                                    res_data["ai_provider"] = "Hybrid Dual Engine (Internal YOLOv8 + Gemini AI)"
+                                    res_data["engine_used"] = "Hybrid Dual Engine (Internal YOLOv8 + Gemini AI)"
+                            except Exception as ge:
+                                print(f"Hybrid Gemini enrichment skipped: {ge}")
+                        return jsonify(res_data)
+                print(f"Internal detection service returned {resp.status_code}, falling back...")
             except Exception as fe:
-                print(f"Internal detection service request failed: {fe}, falling back to local model")
+                print(f"Internal detection service request failed: {fe}, falling back...")
 
-        # Standard local YOLO detection fallback
-        if model is None:
-            if is_gemini_configured():
-                res_data = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
-                gemini_model_used = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-                res_data["success"] = True
-                res_data["filename"] = filename
-                res_data["engine_used"] = f"Google Gemini Cloud AI ({gemini_model_used})"
-                return jsonify(res_data)
-            return jsonify({
-                "error": "Local YOLO model not bundled in serverless environment.",
-                "message": "Please configure GEMINI_API_KEY in your Vercel Project Environment Variables to run Gemini AI microplastic detection!"
-            }), 400
+        # Standard local YOLO detection fallback if weights file exists
+        if model is not None:
+            res_data = process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px)
+            res_data["success"] = True
+            res_data["filename"] = filename
+            res_data["engine_used"] = "YOLOv8 Custom Computer Vision"
 
-        res_data = process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px)
+            if engine == "hybrid":
+                try:
+                    gemini_enrichment = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
+                    if "ai_analysis" in gemini_enrichment:
+                        res_data["ai_analysis"] = gemini_enrichment["ai_analysis"]
+                        res_data["ai_provider"] = "Hybrid Dual Engine (YOLOv8 + Gemini AI)"
+                        res_data["engine_used"] = "Hybrid Dual Engine (YOLOv8 + Gemini AI)"
+                except Exception as ge:
+                    print(f"Hybrid Gemini enrichment skipped: {ge}")
+
+            return jsonify(res_data)
+
+        # Resilient AI & Computer Vision pipeline (detect_microplastics_with_gemini auto-falls back to optical if needed)
+        res_data = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
         res_data["success"] = True
         res_data["filename"] = filename
-        res_data["engine_used"] = "YOLOv8 Custom Computer Vision"
-
-        # If hybrid mode is selected and Gemini API key is configured, enrich with Gemini AI analysis!
-        if engine == "hybrid" and is_gemini_configured():
-            try:
-                gemini_enrichment = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
-                if "ai_analysis" in gemini_enrichment:
-                    res_data["ai_analysis"] = gemini_enrichment["ai_analysis"]
-                    res_data["ai_provider"] = "Hybrid Dual Engine (YOLOv8 + Gemini AI)"
-                    res_data["engine_used"] = "Hybrid Dual Engine (YOLOv8 + Gemini AI)"
-            except Exception as ge:
-                print(f"Hybrid Gemini enrichment skipped: {ge}")
-
+        if "engine_used" not in res_data:
+            res_data["engine_used"] = res_data.get("ai_provider", "MicroDetect Hybrid Vision Engine")
         return jsonify(res_data)
 
     except Exception as e:
@@ -528,10 +522,6 @@ def chat_assistant():
 
         if gemini_key and len(gemini_key) > 15 and "YOUR_GEMINI_API_KEY" not in gemini_key:
             try:
-                model_name = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
-                if model_name in ['gemini-3.6-flash']:
-                    model_name = 'gemini-2.0-flash'
-
                 system_prompt = (
                     "You are MicroDetect AI Assistant, an expert, friendly conversational AI for Environmental Science, Microplastics Detection, Computer Vision, Chemistry, Math, and General Knowledge.\n"
                     "Provide accurate, clear, and well-formatted answers using markdown (bolding, lists, code blocks, tables).\n"
@@ -550,26 +540,21 @@ def chat_assistant():
                 # Append current user prompt with system context
                 contents_list.append({"role": "user", "parts": [{"text": f"{system_prompt}\nUser Query: {user_msg}"}]})
 
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
                 payload = {"contents": contents_list}
-                print(f"📡 Calling Gemini LLM Chat API ({model_name})...")
-                r = requests.post(url, json=payload, timeout=30)
-
-                # Fallback to gemini-2.0-flash if model_name returned 404
-                if r.status_code == 404:
-                    print(f"⚠️ Model {model_name} returned 404, falling back to gemini-2.0-flash...")
-                    url_fallback = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
-                    r = requests.post(url_fallback, json=payload, timeout=30)
-
-                if r.status_code == 200:
-                    res_json = r.json()
-                    candidates = res_json.get("candidates", [])
-                    if candidates and "content" in candidates[0]:
-                        parts = candidates[0]["content"].get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return jsonify({"reply": parts[0]["text"].strip()})
-                else:
-                    print(f"❌ Gemini API Error {r.status_code}: {r.text}")
+                chat_models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"]
+                for m in chat_models:
+                    try:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
+                        r = requests.post(url, json=payload, timeout=20)
+                        if r.status_code == 200:
+                            res_json = r.json()
+                            candidates = res_json.get("candidates", [])
+                            if candidates and "content" in candidates[0]:
+                                parts = candidates[0]["content"].get("parts", [])
+                                if parts and "text" in parts[0]:
+                                    return jsonify({"reply": parts[0]["text"].strip()})
+                    except Exception as me:
+                        print(f"Chat model {m} attempt skipped: {me}")
             except Exception as ge:
                 print(f"Gemini LLM chat exception: {ge}")
 

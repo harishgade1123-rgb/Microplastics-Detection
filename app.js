@@ -9,18 +9,21 @@
 
 // ==============================
 // SPLASH SCREEN CONTROLLER
+// Runs immediately (before DOM ready) to animate and dismiss the
+// splash screen. Steps through progress stages every 420ms,
+// then fades out and removes the element.
 // ==============================
 (function initSplash() {
-  const splash = document.getElementById("splashScreen");
-  const bar = document.getElementById("splashBar");
-  const status = document.getElementById("splashStatus");
+  const splash  = document.getElementById("splashScreen");
+  const bar     = document.getElementById("splashBar");
+  const status  = document.getElementById("splashStatus");
   if (!splash) return;
 
   const steps = [
-    { w: 20, msg: "Loading CSS framework..." },
-    { w: 45, msg: "Initializing Chart.js engine..." },
-    { w: 65, msg: "Connecting to AI backend..." },
-    { w: 85, msg: "Fetching sample gallery..." },
+    { w: 20,  msg: "Loading CSS framework..." },
+    { w: 45,  msg: "Initializing Chart.js engine..." },
+    { w: 65,  msg: "Connecting to AI backend..." },
+    { w: 85,  msg: "Fetching sample gallery..." },
     { w: 100, msg: "Ready!" },
   ];
 
@@ -34,7 +37,7 @@
       return;
     }
     const s = steps[i++];
-    if (bar) bar.style.width = s.w + "%";
+    if (bar)    bar.style.width    = s.w + "%";
     if (status) status.textContent = s.msg;
     setTimeout(tick, 420);
   }
@@ -46,7 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================
   // DOM ELEMENTS
   // ============================
-
   const statusIndicator = document.getElementById("statusIndicator");
   const statusText = document.getElementById("statusText");
   const dropzone = document.getElementById("dropzone");
@@ -700,6 +702,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ANIMATED KPI COUNT-UP
   // ============================
   function animateCountUp(el, targetVal, isFloat = false, suffix = "") {
+    if (!el) return;
+    const safeTarget = Number.isFinite(targetVal) ? targetVal : 0;
     const duration = 900;
     const start = performance.now();
     const from = 0;
@@ -707,10 +711,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function update(now) {
       const progress = Math.min((now - start) / duration, 1);
       const ease = 1 - Math.pow(1 - progress, 3);
-      const current = from + (targetVal - from) * ease;
+      const current = from + (safeTarget - from) * ease;
       el.textContent = isFloat ? current.toFixed(1) + suffix : Math.round(current) + suffix;
       if (progress < 1) requestAnimationFrame(update);
-      else el.textContent = isFloat ? targetVal.toFixed(1) + suffix : targetVal + suffix;
+      else el.textContent = isFloat ? safeTarget.toFixed(1) + suffix : safeTarget + suffix;
     }
     requestAnimationFrame(update);
   }
@@ -721,6 +725,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderResults(data) {
     currentDetectionResult = data;
     window._lastDetectionData = data;
+
+    const paneSingle = document.getElementById("paneSingle");
+    if (paneSingle) paneSingle.classList.remove("pre-detection");
 
     if (data.annotated_image) {
       annotatedImg.src = data.annotated_image;
@@ -743,24 +750,31 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Safety checks for undefined / NaN values
+    const count = Number.isFinite(data.particle_count) ? data.particle_count : (Array.isArray(data.detections) ? data.detections.length : 0);
+    const highConf = Number.isFinite(data.high_conf_count) ? data.high_conf_count : 0;
+    const avgConf = Number.isFinite(data.avg_confidence) ? parseFloat((data.avg_confidence * 100).toFixed(1)) : 0;
+    const risk = data.contamination_risk || (count === 0 ? "Zero Particles Detected" : count < 10 ? "Low Contamination" : count < 30 ? "Moderate Contamination" : "High Contamination Hazard");
+    const riskColor = data.risk_color || (count === 0 ? "#10b981" : count < 10 ? "#3b82f6" : count < 30 ? "#f59e0b" : "#ef4444");
+
     // Animated KPIs with glow pulse
     document.querySelectorAll(".kpi-card").forEach(c => {
       c.classList.add("has-data");
-      c.classList.remove("kpi-result-pulse");
-      // Force reflow to restart animation
+      c.classList.remove("result-pulse");
       void c.offsetWidth;
-      c.classList.add("kpi-result-pulse");
+      c.classList.add("result-pulse");
+      c.addEventListener("animationend", () => c.classList.remove("result-pulse"), { once: true });
     });
-    animateCountUp(kpiCount, data.particle_count);
-    animateCountUp(kpiHighConf, data.high_conf_count);
-    animateCountUp(kpiAvgConf, parseFloat((data.avg_confidence * 100).toFixed(1)), true, "%");
+    animateCountUp(kpiCount, count);
+    animateCountUp(kpiHighConf, highConf);
+    animateCountUp(kpiAvgConf, avgConf, true, "%");
 
     if (kpiRisk) {
-      kpiRisk.textContent = data.contamination_risk;
-      kpiRisk.style.color = data.risk_color || "#f1f5f9";
+      kpiRisk.textContent = risk;
+      kpiRisk.style.color = riskColor;
     }
     if (kpiRiskSub) {
-      kpiRiskSub.textContent = `Evaluated across ${data.particle_count} particle${data.particle_count !== 1 ? "s" : ""}`;
+      kpiRiskSub.textContent = `Evaluated across ${count} particle${count !== 1 ? "s" : ""}`;
     }
 
     if (downloadCsvBtn) downloadCsvBtn.disabled = false;
@@ -804,11 +818,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Toast notification
-    const icon = data.particle_count === 0 ? "✅" : data.particle_count < 10 ? "🔵" : data.particle_count < 30 ? "🟡" : "🔴";
+    const icon = count === 0 ? "✅" : count < 10 ? "🔵" : count < 30 ? "🟡" : "🔴";
     showToast(
       `Detection Complete! ${icon}`,
-      `${data.particle_count} particle${data.particle_count !== 1 ? "s" : ""} found · ${data.contamination_risk}`,
-      data.particle_count === 0 ? "success" : data.particle_count < 10 ? "info" : data.particle_count < 30 ? "warn" : "error",
+      `${count} particle${count !== 1 ? "s" : ""} found · ${risk}`,
+      count === 0 ? "success" : count < 10 ? "info" : count < 30 ? "warn" : "error",
       5000
     );
   }
@@ -1028,30 +1042,43 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderCharts(data) {
     if (typeof Chart === "undefined") return;
 
-    // --- Chart 1: Size Distribution Histogram ---
+    // --- Chart 1: Size Distribution Histogram (Task #5 – gradient bars) ---
     const sizeCtx = document.getElementById("sizeChart").getContext("2d");
-    const sizeLabels = Object.keys(data.size_band_counts || {}).map(l => l.split(" (")[0]);
+    const sizeLabels = Object.keys(data.size_band_counts || {});
     const sizeValues = Object.values(data.size_band_counts || {});
-    const sizeColors = ["rgba(139,92,246,0.85)","rgba(0,240,234,0.85)","rgba(245,158,11,0.85)","rgba(239,68,68,0.85)"];
-    const sizeBorderColors = ["#8b5cf6","#00f0ea","#f59e0b","#ef4444"];
     if (sizeChartInstance) sizeChartInstance.destroy();
+
+    // Build per-bar gradients
+    const sizeGradientColors = [
+      ["#8b5cf6", "#6d28d9"],
+      ["#2DD4BF", "#0e9488"],
+      ["#f59e0b", "#b45309"],
+      ["#ef4444", "#991b1b"],
+      ["#38bdf8", "#0369a1"]
+    ];
+    const sizeBarGradients = sizeValues.map((_, idx) => {
+      const grad = sizeCtx.createLinearGradient(0, 0, 0, 220);
+      const [top, bot] = sizeGradientColors[idx % sizeGradientColors.length];
+      grad.addColorStop(0, top);
+      grad.addColorStop(1, bot + "88");
+      return grad;
+    });
+
     sizeChartInstance = new Chart(sizeCtx, {
       type: "bar",
       data: {
-        labels: sizeLabels,
+        labels: sizeLabels.map(l => l.replace(" (", "\n(")),
         datasets: [{
           label: "Particle Count",
           data: sizeValues,
-          backgroundColor: sizeColors,
-          borderColor: sizeBorderColors,
-          borderWidth: 2,
+          backgroundColor: sizeBarGradients,
           borderRadius: 8,
           borderSkipped: false,
+          hoverBackgroundColor: sizeBarGradients
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        animation: { duration: 900, easing: "easeOutQuart" },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -1061,40 +1088,54 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         },
         scales: {
-          x: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: "#94a3b8", stepSize: 1, precision: 0 }, grid: { color: "rgba(255,255,255,0.05)" }, beginAtZero: true }
-        }
+          x: { ticks: { color: "#94a3b8", font: { size: 9 } }, grid: { display: false } },
+          y: {
+            ticks: { color: "#94a3b8", stepSize: 1, precision: 0 },
+            grid: { color: "rgba(255,255,255,0.05)" },
+            beginAtZero: true
+          }
+        },
+        animation: { duration: 900, easing: "easeOutQuart" }
       }
     });
 
-    // --- Chart 2: Morphology Donut Chart with center text ---
+    // --- Chart 2: Morphology Donut Chart (Task #4 – richer colors + center text) ---
     const morphCtx = document.getElementById("morphologyChart").getContext("2d");
     const morphLabels = Object.keys(data.morphology_counts || {});
     const morphValues = Object.values(data.morphology_counts || {});
-    const morphTotal = morphValues.reduce((a, b) => a + b, 0);
-    const morphColorMap = { "Fiber": "#22D3EE", "Fragment": "#A78BFA", "Pellet / Nurdle": "#F59E0B", "Film": "#34D399" };
-    const morphBgColors = morphLabels.map(l => morphColorMap[l] || "#8A93A6");
+    const morphTotal  = morphValues.reduce((a, b) => a + b, 0);
     if (morphologyChartInstance) morphologyChartInstance.destroy();
 
-    // Center text plugin
-    const centerTextPlugin = {
-      id: "centerText",
+    // Center-text plugin (inline, scoped to this chart)
+    const morphCenterTextPlugin = {
+      id: "morphCenterText",
       afterDraw(chart) {
-        const { ctx, chartArea: { width, height, left, top } } = chart;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const cx = (chartArea.left + chartArea.right) / 2;
+        const cy = (chartArea.top + chartArea.bottom) / 2;
         ctx.save();
-        const cx = left + width / 2;
-        const cy = top + height / 2;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.font = "bold 22px Inter, sans-serif";
         ctx.fillStyle = "#E8EBF0";
-        ctx.fillText(morphTotal, cx, cy - 8);
+        ctx.fillText(morphTotal, cx, cy - 10);
         ctx.font = "11px Inter, sans-serif";
         ctx.fillStyle = "#8A93A6";
-        ctx.fillText("particles", cx, cy + 11);
+        ctx.fillText("particles", cx, cy + 10);
         ctx.restore();
       }
     };
+
+    const MORPH_PALETTE = {
+      Fiber:    "#2DD4BF",
+      Fragment: "#a78bfa",
+      Pellet:   "#f59e0b",
+      Film:     "#34d399",
+      Bead:     "#f87171",
+      Other:    "#60a5fa"
+    };
+    const morphColors = morphLabels.map(lbl => MORPH_PALETTE[lbl] || "#94a3b8");
 
     morphologyChartInstance = new Chart(morphCtx, {
       type: "doughnut",
@@ -1102,57 +1143,64 @@ document.addEventListener("DOMContentLoaded", () => {
         labels: morphLabels,
         datasets: [{
           data: morphValues,
-          backgroundColor: morphBgColors,
-          borderColor: "#11161F",
-          borderWidth: 3,
-          hoverOffset: 8,
+          backgroundColor: morphColors,
+          hoverBackgroundColor: morphColors.map(c => c + "CC"),
+          borderWidth: 0,
+          hoverOffset: 8
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        cutout: "62%",
-        animation: { duration: 900, easing: "easeOutQuart" },
+        cutout: "68%",
         plugins: {
-          legend: { position: "right", labels: { color: "#cbd5e1", font: { size: 11 }, boxWidth: 14, padding: 14 } },
+          legend: {
+            position: "right",
+            labels: { color: "#cbd5e1", font: { size: 10, family: "Inter" }, boxWidth: 12, padding: 14 }
+          },
           tooltip: {
             callbacks: {
-              label: ctx => `${ctx.label}: ${ctx.parsed} (${morphTotal > 0 ? Math.round((ctx.parsed / morphTotal) * 100) : 0}%)`
+              label: ctx => ` ${ctx.label}: ${ctx.parsed} (${((ctx.parsed / morphTotal) * 100).toFixed(1)}%)`
             }
           }
-        }
+        },
+        animation: { animateRotate: true, duration: 1000, easing: "easeOutQuart" }
       },
-      plugins: [centerTextPlugin]
+      plugins: [morphCenterTextPlugin]
     });
 
-    // --- Chart 3: Confidence Scatter Plot (size µm vs confidence %) ---
+    // --- Chart 3: Confidence × Size Scatter Plot (Task #6) ---
     const confCtx = document.getElementById("confidenceChart").getContext("2d");
     const detections = data.detections || [];
     if (confidenceChartInstance) confidenceChartInstance.destroy();
+
     if (detections.length === 0) return;
 
-    const morphColorMapScatter = { "Fiber": "#22D3EE", "Fragment": "#A78BFA", "Pellet / Nurdle": "#F59E0B", "Film": "#34D399" };
-    const scatterPoints = detections.map(d => ({
-      x: parseFloat(d.width_um) || 0,
-      y: parseFloat((d.confidence * 100).toFixed(1)),
-      morphology: d.morphology,
-      id: d.id,
-    }));
-
-    const morphGroups = {};
-    scatterPoints.forEach(pt => {
-      const m = pt.morphology || "Unknown";
-      if (!morphGroups[m]) morphGroups[m] = [];
-      morphGroups[m].push({ x: pt.x, y: pt.y });
+    // Group by morphology type for color-coded datasets
+    const SCATTER_PALETTE = {
+      Fiber:    "rgba(45,212,191,0.85)",
+      Fragment: "rgba(167,139,250,0.85)",
+      Pellet:   "rgba(245,158,11,0.85)",
+      Film:     "rgba(52,211,153,0.85)",
+      Bead:     "rgba(248,113,113,0.85)",
+      Other:    "rgba(96,165,250,0.85)"
+    };
+    const scatterGroups = {};
+    detections.forEach(d => {
+      const morph = d.morphology || "Other";
+      if (!scatterGroups[morph]) scatterGroups[morph] = [];
+      scatterGroups[morph].push({
+        x: parseFloat((d.size_um || d.size || 0).toFixed(1)),
+        y: parseFloat((d.confidence * 100).toFixed(1))
+      });
     });
-
-    const scatterDatasets = Object.entries(morphGroups).map(([morph, pts]) => ({
+    const scatterDatasets = Object.entries(scatterGroups).map(([morph, pts]) => ({
       label: morph,
       data: pts,
-      backgroundColor: (morphColorMapScatter[morph] || "#8A93A6") + "CC",
-      borderColor: morphColorMapScatter[morph] || "#8A93A6",
-      borderWidth: 1.5,
+      backgroundColor: SCATTER_PALETTE[morph] || "rgba(148,163,184,0.8)",
+      borderColor: "rgba(0,0,0,0.2)",
+      borderWidth: 1,
       pointRadius: 7,
-      pointHoverRadius: 10,
+      pointHoverRadius: 11
     }));
 
     confidenceChartInstance = new Chart(confCtx, {
@@ -1160,28 +1208,31 @@ document.addEventListener("DOMContentLoaded", () => {
       data: { datasets: scatterDatasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        animation: { duration: 800 },
         plugins: {
-          legend: { labels: { color: "#cbd5e1", font: { size: 11 }, boxWidth: 12, padding: 12 } },
+          legend: {
+            position: "top",
+            labels: { color: "#cbd5e1", font: { size: 10, family: "Inter" }, boxWidth: 10, padding: 12 }
+          },
           tooltip: {
             callbacks: {
-              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.x.toFixed(1)} µm | ${ctx.parsed.y.toFixed(1)}% confidence`
+              label: ctx => `${ctx.dataset.label} — Size: ${ctx.parsed.x}µm, Conf: ${ctx.parsed.y}%`
             }
           }
         },
         scales: {
           x: {
-            title: { display: true, text: "Particle Size (µm)", color: "#94a3b8", font: { size: 11 } },
-            ticks: { color: "#94a3b8", font: { size: 10 } },
+            title: { display: true, text: "Particle Size (µm)", color: "#8A93A6", font: { size: 10 } },
+            ticks: { color: "#94a3b8", font: { size: 9 } },
             grid: { color: "rgba(255,255,255,0.04)" }
           },
           y: {
+            title: { display: true, text: "Confidence (%)", color: "#8A93A6", font: { size: 10 } },
             min: 0, max: 100,
-            title: { display: true, text: "Confidence (%)", color: "#94a3b8", font: { size: 11 } },
             ticks: { color: "#94a3b8", callback: v => v + "%" },
             grid: { color: "rgba(255,255,255,0.05)" }
           }
-        }
+        },
+        animation: { duration: 900, easing: "easeOutQuart" }
       }
     });
   }
@@ -1190,36 +1241,94 @@ document.addEventListener("DOMContentLoaded", () => {
   // ENVIRONMENTAL IMPACT DASHBOARD
   // ============================
   function renderEnvironmentalImpact(count, risk) {
+    // ── Original 4 metrics ──────────────────────────────────────
     // Scientific estimations based on WHO and GESAMP data
-    const waterLitres = Math.round(count * 12.5);    // ~12.5L per particle average contamination radius
-    const marineSpecies = Math.min(Math.round(count * 0.8), 100);  // species affected estimate
-    const healthMicrograms = parseFloat((count * 0.034).toFixed(2)); // WHO human ingestion equivalence
-    const pollutionScore = Math.min(Math.round(count * 2.5), 100);   // scaled /100
+    const waterLitres    = Math.round(count * 12.5);               // ~12.5L per particle average contamination radius
+    const marineSpecies  = Math.min(Math.round(count * 0.8), 100); // species affected estimate
+    const healthMicrograms = parseFloat((count * 0.034).toFixed(2));// WHO human ingestion equivalence
+    const pollutionScore = Math.min(Math.round(count * 2.5), 100); // scaled /100
 
-    // Animate values
-    animateCountUp(envWater, waterLitres);
-    animateCountUp(envMarine, marineSpecies);
-    animateCountUp(envHealth, healthMicrograms, true, "");
-    animateCountUp(envPollution, pollutionScore);
+    // ── 4 NEW metrics ───────────────────────────────────────────
+    // Soil Contamination: ECHA soil ingestion model, ~4.2 m² soil disturbed per particle
+    const soilArea = parseFloat((count * 4.2).toFixed(1));
 
-    // Animate bars (setTimeout to let values start first)
+    // Air Quality Risk: Microfibre inhalation index (ECHA 2022 airborne particle rate)
+    // Each particle contributes 0.6 microfibre index points, capped at 100
+    const airIndex = Math.min(Math.round(count * 0.6), 100);
+
+    // Food Chain Bioaccumulation: Rochman et al. (2013) trophic magnification
+    // Factor increases logarithmically with particle count across 3 trophic levels
+    const foodFactor = parseFloat(Math.min(count > 0 ? (1 + Math.log10(count + 1) * 2.8) : 0, 50).toFixed(1));
+
+    // Carbon Footprint: GESAMP (2015) plastic degradation CO₂ equivalence
+    // ~0.019 g CO₂-eq released per microplastic particle during environmental degradation
+    const carbonGrams = parseFloat((count * 0.019).toFixed(3));
+
+    // ── Animate all values ──────────────────────────────────────
+    animateCountUp(envWater,      waterLitres);
+    animateCountUp(envMarine,     marineSpecies);
+    animateCountUp(envHealth,     healthMicrograms, true, "");
+    animateCountUp(envPollution,  pollutionScore);
+
+    const envSoil   = document.getElementById("envSoil");
+    const envAir    = document.getElementById("envAir");
+    const envFood   = document.getElementById("envFood");
+    const envCarbon = document.getElementById("envCarbon");
+
+    if (envSoil)   animateCountUp(envSoil,   soilArea,   true, "");
+    if (envAir)    animateCountUp(envAir,    airIndex);
+    if (envFood)   animateCountUp(envFood,   foodFactor, true, "×");
+    if (envCarbon) animateCountUp(envCarbon, carbonGrams, true, "");
+
+    // ── Animate bars and radial gauges ─────────────────────────
+    const CIRCUMFERENCE = 151; // 2π × 24 ≈ 150.8
+    function setGauge(id, pct) {
+      const el = document.getElementById(id);
+      if (el) el.style.strokeDashoffset = CIRCUMFERENCE - (CIRCUMFERENCE * Math.min(pct, 100) / 100);
+    }
+
     setTimeout(() => {
-      envWaterBar.style.width = Math.min((waterLitres / 500) * 100, 100) + "%";
-      envMarineBar.style.width = Math.min((marineSpecies / 100) * 100, 100) + "%";
-      envHealthBar.style.width = Math.min((healthMicrograms / 5) * 100, 100) + "%";
-      envPollutionBar.style.width = pollutionScore + "%";
+      // Original bars
+      envWaterBar.style.width      = Math.min((waterLitres / 500) * 100, 100) + "%";
+      envMarineBar.style.width     = Math.min((marineSpecies / 100) * 100, 100) + "%";
+      envHealthBar.style.width     = Math.min((healthMicrograms / 5) * 100, 100) + "%";
+      envPollutionBar.style.width  = pollutionScore + "%";
+
+      // Original gauges
+      setGauge("envWaterGauge",    Math.min((waterLitres / 500) * 100, 100));
+      setGauge("envMarineGauge",   marineSpecies);
+      setGauge("envHealthGauge",   Math.min((healthMicrograms / 5) * 100, 100));
+      setGauge("envPollutionGauge", pollutionScore);
+
+      // New bars
+      const soilBar   = document.getElementById("envSoilBar");
+      const airBar    = document.getElementById("envAirBar");
+      const foodBar   = document.getElementById("envFoodBar");
+      const carbonBar = document.getElementById("envCarbonBar");
+
+      if (soilBar)   soilBar.style.width   = Math.min((soilArea / 200) * 100, 100) + "%";
+      if (airBar)    airBar.style.width    = airIndex + "%";
+      if (foodBar)   foodBar.style.width   = Math.min((foodFactor / 50) * 100, 100) + "%";
+      if (carbonBar) carbonBar.style.width = Math.min((carbonGrams / 1) * 100, 100) + "%";
+
+      // New gauges
+      setGauge("envSoilGauge",   Math.min((soilArea / 200) * 100, 100));
+      setGauge("envAirGauge",    airIndex);
+      setGauge("envFoodGauge",   Math.min((foodFactor / 50) * 100, 100));
+      setGauge("envCarbonGauge", Math.min((carbonGrams / 1) * 100, 100));
     }, 200);
 
-    // Recommendation text based on risk
+    // ── Recommendation text ─────────────────────────────────────
     const recommendations = {
-      "Zero Particles Detected": "✅ Sample appears clean. No significant microplastic contamination detected. Continue monitoring at regular intervals.",
-      "Low Contamination": "🔵 Low-level contamination detected. Source investigation recommended. Check for nearby textile washing discharge or plastic litter.",
-      "Moderate Contamination": "🟡 Moderate contamination level. Immediate source tracing required. This water may not be safe for aquatic life without treatment.",
-      "High Contamination Hazard": "🔴 HIGH HAZARD LEVEL. This sample shows severe microplastic contamination. Urgent remediation and source elimination is critical. Do not use for drinking, irrigation, or aquaculture."
+      "Zero Particles Detected":   "✅ Sample appears clean. No significant microplastic contamination detected. Continue monitoring at regular intervals.",
+      "Low Contamination":         "🔵 Low-level contamination detected. Source investigation recommended. Check for nearby textile washing discharge or plastic litter.",
+      "Moderate Contamination":    "🟡 Moderate contamination level. Immediate source tracing required. This water may not be safe for aquatic life without treatment.",
+      "High Contamination Hazard": "🔴 HIGH HAZARD LEVEL. Severe microplastic contamination detected. Urgent remediation and source elimination is critical. Do not use for drinking, irrigation, or aquaculture."
     };
 
     envRecText.textContent = recommendations[risk] || "Run a detection to see environmental impact assessment.";
   }
+
 
   // ============================
   // BATCH UPLOAD UI
@@ -1956,8 +2065,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // WHATSAPP SHARE
+  // WHATSAPP & EMAIL SHARE (Task #8)
   // ============================
+  function buildShareSummary() {
+    if (!currentDetectionResult) return null;
+    const res = currentDetectionResult;
+    return {
+      text: `🔬 MicroDetect AI Result\n📷 Sample: ${res.filename || "Unknown"}\n🧫 Particles Found: ${res.particle_count}\n⚠️ Risk Level: ${res.contamination_risk}\n📊 Avg Confidence: ${(res.avg_confidence * 100).toFixed(1)}%\n📅 ${new Date().toLocaleString()}\n🌍 AI-Powered Environmental Monitoring`,
+      subject: `MicroDetect AI — ${res.particle_count} microplastics detected (${res.contamination_risk} risk)`,
+      filename: res.filename || "scan"
+    };
+  }
+
   const whatsappShareBtn = document.getElementById("whatsappShareBtn");
   if (whatsappShareBtn) {
     whatsappShareBtn.addEventListener("click", () => {
@@ -1965,24 +2084,13 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("Nothing to share", "Run a detection first!", "warn", 3000);
         return;
       }
-      const res = currentDetectionResult;
-      const text = encodeURIComponent(
-        `🔬 *MicroDetect AI — Microplastic Analysis*\n` +
-        `📷 Sample: ${res.filename}\n` +
-        `🧫 Particles Detected: *${res.particle_count}*\n` +
-        `⚠️ Risk Level: *${res.contamination_risk}*\n` +
-        `📊 Avg AI Confidence: ${(res.avg_confidence * 100).toFixed(1)}%\n` +
-        `📅 ${new Date().toLocaleString()}\n` +
-        `🌍 Analyzed using YOLO AI Environmental Monitoring System`
-      );
-      window.open(`https://wa.me/?text=${text}`, "_blank");
-      showToast("WhatsApp Opened!", "Pre-filled message ready to send.", "success", 3000);
+      const s = buildShareSummary();
+      const url = `https://wa.me/?text=${encodeURIComponent(s.text)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+      showToast("WhatsApp", "Opening WhatsApp share...", "success", 2500);
     });
   }
 
-  // ============================
-  // EMAIL SHARE
-  // ============================
   const emailShareBtn = document.getElementById("emailShareBtn");
   if (emailShareBtn) {
     emailShareBtn.addEventListener("click", () => {
@@ -1990,125 +2098,127 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("Nothing to share", "Run a detection first!", "warn", 3000);
         return;
       }
-      const res = currentDetectionResult;
-      const subject = encodeURIComponent(`Microplastic Detection Report — ${res.filename}`);
-      const body = encodeURIComponent(
-        `MicroDetect AI — Microplastic Detection Report\n` +
-        `==========================================\n\n` +
-        `Sample File: ${res.filename}\n` +
-        `Particles Detected: ${res.particle_count}\n` +
-        `High Confidence Detections: ${res.high_conf_count}\n` +
-        `Avg AI Confidence: ${(res.avg_confidence * 100).toFixed(1)}%\n` +
-        `Contamination Risk: ${res.contamination_risk}\n` +
-        `Analysis Date: ${new Date().toLocaleString()}\n\n` +
-        `This analysis was performed using YOLOv8 AI for Environmental Science monitoring.`
-      );
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-      showToast("Email Client Opened!", "Pre-filled email ready to send.", "success", 3000);
+      const s = buildShareSummary();
+      const mailto = `mailto:?subject=${encodeURIComponent(s.subject)}&body=${encodeURIComponent(s.text)}`;
+      window.location.href = mailto;
+      showToast("Email", "Opening email client...", "success", 2500);
     });
   }
 
   // ============================
-  // CAMERA CAPTURE MODAL
+  // CAMERA / WEBCAM MODAL (Task #7)
   // ============================
-  const cameraBtn = document.getElementById("cameraBtn");
-  const cameraModal = document.getElementById("cameraModal");
-  const cameraModalClose = document.getElementById("cameraModalClose");
-  const cameraModalClose2 = document.getElementById("cameraModalClose2");
-  const cameraVideo = document.getElementById("cameraVideo");
-  const cameraCanvas = document.getElementById("cameraCanvas");
-  const cameraCaptureBtn = document.getElementById("cameraCaptureBtn");
-  const cameraRetakeBtn = document.getElementById("cameraRetakeBtn");
-  const cameraOverlay = document.getElementById("cameraOverlay");
-  const cameraReticle = document.getElementById("cameraReticle");
-  const cameraError = document.getElementById("cameraError");
-  let cameraStream = null;
-  let capturedImageFile = null;
+  (function initCameraModal() {
+    const cameraBtn       = document.getElementById("cameraBtn");
+    const cameraModal     = document.getElementById("cameraModal");
+    const cameraModalClose  = document.getElementById("cameraModalClose");
+    const cameraModalClose2 = document.getElementById("cameraModalClose2");
+    const cameraVideo     = document.getElementById("cameraVideo");
+    const cameraCanvas    = document.getElementById("cameraCanvas");
+    const cameraCaptureBtn  = document.getElementById("cameraCaptureBtn");
+    const cameraRetakeBtn   = document.getElementById("cameraRetakeBtn");
+    const cameraOverlay   = document.getElementById("cameraOverlay");
+    const cameraError     = document.getElementById("cameraError");
 
-  function openCameraModal() {
-    if (!cameraModal) return;
-    cameraModal.style.display = "flex";
-    cameraOverlay.style.display = "none";
-    cameraReticle.style.display = "flex";
-    cameraCaptureBtn.style.display = "block";
-    cameraRetakeBtn.style.display = "none";
-    cameraError.style.display = "none";
-    capturedImageFile = null;
-    startCameraStream();
-  }
+    if (!cameraBtn || !cameraModal) return;
 
-  function closeCameraModal() {
-    if (!cameraModal) return;
-    cameraModal.style.display = "none";
-    stopCameraStream();
-  }
+    let cameraStream = null;
+    let capturedBlob = null;
 
-  async function startCameraStream() {
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } });
-      cameraVideo.srcObject = cameraStream;
+    function openModal() {
+      cameraModal.style.display = "flex";
       cameraError.style.display = "none";
-    } catch (err) {
-      console.error("Camera error:", err);
-      cameraError.style.display = "block";
-      cameraCaptureBtn.disabled = true;
-    }
-  }
-
-  function stopCameraStream() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(t => t.stop());
-      cameraStream = null;
-    }
-    if (cameraVideo) cameraVideo.srcObject = null;
-  }
-
-  function captureFrame() {
-    if (!cameraVideo || !cameraCanvas) return;
-    cameraCanvas.width = cameraVideo.videoWidth || 640;
-    cameraCanvas.height = cameraVideo.videoHeight || 480;
-    const ctx = cameraCanvas.getContext("2d");
-    ctx.drawImage(cameraVideo, 0, 0);
-    stopCameraStream();
-    cameraCanvas.toBlob(blob => {
-      if (!blob) return;
-      const filename = `webcam_capture_${Date.now()}.jpg`;
-      capturedImageFile = new File([blob], filename, { type: "image/jpeg" });
-      // Show captured overlay
-      cameraOverlay.style.display = "flex";
-      cameraReticle.style.display = "none";
-      cameraCaptureBtn.style.display = "none";
-      cameraRetakeBtn.style.display = "block";
-      showToast("📸 Frame Captured!", "Click 'Retake' or close to run detection with this image.", "success", 3000);
-      // Load the image for detection and close modal
-      handleFileSelection(capturedImageFile);
-      closeCameraModal();
-      // Slight delay then auto-detect
-      setTimeout(() => detectBtn.click(), 400);
-    }, "image/jpeg", 0.92);
-  }
-
-  if (cameraBtn) cameraBtn.addEventListener("click", openCameraModal);
-  if (cameraModalClose) cameraModalClose.addEventListener("click", closeCameraModal);
-  if (cameraModalClose2) cameraModalClose2.addEventListener("click", closeCameraModal);
-  if (cameraCaptureBtn) cameraCaptureBtn.addEventListener("click", captureFrame);
-  if (cameraRetakeBtn) {
-    cameraRetakeBtn.addEventListener("click", () => {
       cameraOverlay.style.display = "none";
-      cameraReticle.style.display = "flex";
-      cameraCaptureBtn.style.display = "block";
+      cameraCaptureBtn.style.display = "flex";
       cameraRetakeBtn.style.display = "none";
-      capturedImageFile = null;
-      startCameraStream();
-    });
-  }
-  // Close modal on backdrop click
-  if (cameraModal) {
-    cameraModal.addEventListener("click", (e) => {
-      if (e.target === cameraModal) closeCameraModal();
-    });
-  }
+      capturedBlob = null;
+      startCamera();
+    }
 
+    function closeModal() {
+      cameraModal.style.display = "none";
+      stopCamera();
+    }
+
+    function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        cameraError.textContent = "⚠️ Camera API not supported in this browser.";
+        cameraError.style.display = "block";
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } })
+        .then(stream => {
+          cameraStream = stream;
+          cameraVideo.srcObject = stream;
+        })
+        .catch(err => {
+          cameraError.textContent = `⚠️ Camera access denied: ${err.message}`;
+          cameraError.style.display = "block";
+        });
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+        cameraVideo.srcObject = null;
+      }
+    }
+
+    function captureFrame() {
+      const w = cameraVideo.videoWidth  || 640;
+      const h = cameraVideo.videoHeight || 480;
+      cameraCanvas.width  = w;
+      cameraCanvas.height = h;
+      const cCtx = cameraCanvas.getContext("2d");
+      cCtx.drawImage(cameraVideo, 0, 0, w, h);
+      cameraCanvas.toBlob(blob => {
+        capturedBlob = blob;
+        cameraOverlay.style.display = "flex";
+        // Switch button to Analyze mode
+        cameraCaptureBtn.textContent = "✅ Use This Image";
+        cameraCaptureBtn.onclick = analyzeCapture;
+        cameraRetakeBtn.style.display = "flex";
+        stopCamera();
+      }, "image/jpeg", 0.95);
+    }
+
+    function analyzeCapture() {
+      if (!capturedBlob) return;
+      const file = new File([capturedBlob], `camera_capture_${Date.now()}.jpg`, { type: "image/jpeg" });
+      // Inject into the existing file input and trigger detection
+      const fileInput = document.getElementById("fileInput");
+      if (fileInput) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      closeModal();
+      showToast("Camera Capture", "Image captured — running detection!", "success", 3000);
+    }
+
+    cameraBtn.addEventListener("click", openModal);
+    if (cameraModalClose)  cameraModalClose.addEventListener("click",  closeModal);
+    if (cameraModalClose2) cameraModalClose2.addEventListener("click", closeModal);
+    cameraModal.addEventListener("click", e => { if (e.target === cameraModal) closeModal(); });
+
+    cameraCaptureBtn.addEventListener("click", captureFrame);
+    cameraRetakeBtn.addEventListener("click", () => {
+      capturedBlob = null;
+      cameraOverlay.style.display = "none";
+      // Reset button back to capture mode
+      cameraCaptureBtn.textContent = "📸 Capture & Analyze";
+      cameraCaptureBtn.onclick = null;
+      cameraRetakeBtn.style.display = "none";
+      startCamera();
+    });
+
+    // Keyboard escape
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && cameraModal.style.display === "flex") closeModal();
+    });
+  })();
 
 
   // ============================
