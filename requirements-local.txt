@@ -1,0 +1,14 @@
+# Full local environment requirements (for offline YOLO training and Streamlit app)
+streamlit
+ultralytics
+opencv-python
+numpy
+pandas
+matplotlib
+seaborn
+requests
+Pillow
+python-dotenv
+google-generativeai
+flask
+flask-cors

@@ -1,0 +1,20 @@
+# Ignore heavy YOLO training dataset files from Vercel function bundle
+microplastic-detection/microplastic-detection/data/
+**/data/raw/
+**/data/annotations/
+runs/
+**/runs/
+
+# Ignore heavy ML checkpoints and environments
+*.pt
+*.zip
+.venv/
+yolov8_env/
+
+# Ignore dev and IDE configs
+.git/
+.vscode/
+.devcontainer/
+requirements-local.txt
+push.bat
+run.bat

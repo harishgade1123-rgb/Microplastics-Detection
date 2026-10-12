@@ -159,7 +159,11 @@ def detect():
             return jsonify({"error": "Invalid image payload"}), 400
 
         if model is None:
-            return jsonify({"error": "Detection model not loaded on internal service"}), 500
+            return jsonify({
+                "success": False,
+                "error": "Model not loaded on internal service",
+                "message": "Local YOLO model weights are not available on serverless runtime."
+            }), 503
 
         width, height = pil_img.size
         processed_img = apply_clahe_enhancement(pil_img) if apply_clahe else pil_img

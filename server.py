@@ -393,7 +393,17 @@ def detect():
 
         # Standard local YOLO detection fallback
         if model is None:
-            return jsonify({"error": "YOLO Model not loaded on server and internal service unavailable"}), 500
+            if is_gemini_configured():
+                res_data = detect_microplastics_with_gemini(pil_img, conf_thresh, um_per_px)
+                gemini_model_used = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+                res_data["success"] = True
+                res_data["filename"] = filename
+                res_data["engine_used"] = f"Google Gemini Cloud AI ({gemini_model_used})"
+                return jsonify(res_data)
+            return jsonify({
+                "error": "Local YOLO model not bundled in serverless environment.",
+                "message": "Please configure GEMINI_API_KEY in your Vercel Project Environment Variables to run Gemini AI microplastic detection!"
+            }), 400
 
         res_data = process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px)
         res_data["success"] = True
