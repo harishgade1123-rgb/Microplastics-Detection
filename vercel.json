@@ -1,31 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "app": {
-      "root": ".",
-      "runtime": "python",
-      "entrypoint": "server.py",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "microplastic-detection",
-          "format": "url",
-          "env": "MICROPLASTIC_DETECTION_URL"
-        }
-      ]
-    },
-    "microplastic-detection": {
-      "root": "microplastic-detection/microplastic-detection",
-      "runtime": "python",
-      "entrypoint": "api.py"
-    }
-  },
+  "version": 2,
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": {
-        "service": "app"
-      }
+      "destination": "/api/index"
     }
   ]
 }

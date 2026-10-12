@@ -81,10 +81,13 @@ try:
 except ImportError:
     cv2 = None
 
-app = Flask(__name__, static_folder="web", static_url_path="")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WEB_DIR = os.path.join(BASE_DIR, "web")
+
+app = Flask(__name__, static_folder=WEB_DIR, static_url_path="")
 CORS(app)
 
-MODEL_PATH = "best.pt"
+MODEL_PATH = os.path.join(BASE_DIR, "best.pt")
 model = None
 
 def load_yolo_model():
@@ -96,9 +99,10 @@ def load_yolo_model():
         print(f"🧠 Loading custom YOLO model from {MODEL_PATH}...")
         model = YOLO(MODEL_PATH)
         print("✅ Custom model loaded successfully!")
-    elif os.path.exists("yolov8n.pt"):
-        print("🧠 Loading fallback model yolov8n.pt...")
-        model = YOLO("yolov8n.pt")
+    elif os.path.exists(os.path.join(BASE_DIR, "yolov8n.pt")):
+        fallback_path = os.path.join(BASE_DIR, "yolov8n.pt")
+        print(f"🧠 Loading fallback model {fallback_path}...")
+        model = YOLO(fallback_path)
     else:
         print("⚠️ No model file found.")
 
@@ -141,12 +145,12 @@ def classify_size_band(max_dim_um):
 
 @app.route("/")
 def index():
-    return send_from_directory("web", "index.html")
+    return send_from_directory(WEB_DIR, "index.html")
 
 @app.route("/dashboard")
 @app.route("/dashboard/")
 def dashboard():
-    return send_from_directory("web", "dashboard.html")
+    return send_from_directory(WEB_DIR, "dashboard.html")
 
 @app.route("/api/health", methods=["GET"])
 def health():
@@ -172,9 +176,8 @@ def train_gemini():
 def samples():
     """Return list of sample test images available in the root directory."""
     sample_files = []
-    root_dir = "."
-    if os.path.exists(root_dir):
-        for f in os.listdir(root_dir):
+    if os.path.exists(BASE_DIR):
+        for f in os.listdir(BASE_DIR):
             if f.startswith("test_image") and f.lower().endswith((".jpg", ".jpeg", ".png")):
                 sample_files.append(f)
     sample_files.sort()
@@ -184,8 +187,9 @@ def samples():
 def get_sample_image(filename):
     """Serve sample images for quick testing."""
     safe_name = os.path.basename(filename)
-    if os.path.exists(safe_name):
-        return send_from_directory(".", safe_name)
+    file_path = os.path.join(BASE_DIR, safe_name)
+    if os.path.exists(file_path):
+        return send_from_directory(BASE_DIR, safe_name)
     return jsonify({"error": "File not found"}), 404
 
 def process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px):

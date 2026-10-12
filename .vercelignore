@@ -1,20 +1,31 @@
-# Ignore heavy YOLO training dataset files from Vercel function bundle
-microplastic-detection/microplastic-detection/data/
-**/data/raw/
-**/data/annotations/
+# Ignore heavy datasets & sub-repos
+microplastic-detection/
+data/
+**/data/
 runs/
 **/runs/
+gemini_finetune_dataset.jsonl
+export_gemini_tuning_dataset.py
+train.py
+app.py
 
-# Ignore heavy ML checkpoints and environments
+# Ignore heavy ML checkpoints & environments
 *.pt
 *.zip
+*.dll
+*.pyd
 .venv/
 yolov8_env/
+__pycache__/
+*.pyc
 
-# Ignore dev and IDE configs
+# Ignore dev, IDE, and secrets
 .git/
 .vscode/
 .devcontainer/
+.env
+*.env
+.env.*
 requirements-local.txt
 push.bat
 run.bat
