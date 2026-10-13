@@ -248,12 +248,63 @@ def detect():
             risk = "High Contamination Hazard"
             risk_color = "#ef4444"
 
+        # Custom annotation — blue boxes with "microplastic 0.35" labels (new style)
         try:
-            annotated_bgr = result.plot()
-            annotated_rgb = annotated_bgr[..., ::-1]
-            annotated_pil = Image.fromarray(annotated_rgb)
-        except Exception:
-            annotated_pil = processed_img
+            from PIL import ImageDraw, ImageFont
+            annotated_pil = processed_img.copy()
+            draw = ImageDraw.Draw(annotated_pil, "RGBA")
+
+            BOX_COLOR = (59, 130, 246)        # #3B82F6 blue (RGB)
+            LABEL_BG   = (0, 0, 0, 180)       # semi-transparent dark background
+            LABEL_FG   = (255, 255, 255, 255) # white text
+            lw = max(2, int(min(annotated_pil.width, annotated_pil.height) / 300))
+
+            # Try to load a small font; fallback to default
+            try:
+                font_size = max(12, int(annotated_pil.width / 70))
+                font = ImageFont.truetype("arial.ttf", font_size)
+            except Exception:
+                try:
+                    font = ImageFont.load_default(size=max(12, int(annotated_pil.width / 70)))
+                except Exception:
+                    font = ImageFont.load_default()
+
+            for d in boxes_data:
+                x1, y1, x2, y2 = [int(v) for v in d["bbox"]]
+
+                # Draw bounding box (blue)
+                for t in range(lw):
+                    draw.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=BOX_COLOR)
+
+                # Label: "microplastic 0.35"
+                label = f"{d['class'].lower()} {d['confidence']:.2f}"
+                try:
+                    bbox_t = font.getbbox(label)
+                    text_w = bbox_t[2] - bbox_t[0]
+                    text_h = bbox_t[3] - bbox_t[1]
+                except Exception:
+                    text_w, text_h = len(label) * 7, 14
+
+                pad = 4
+                label_h = text_h + pad * 2
+                label_y = (y1 - label_h) if (y1 - label_h) >= 0 else y1 + 2
+
+                # Dark background for label
+                draw.rectangle(
+                    [x1, label_y, x1 + text_w + pad * 2, label_y + label_h],
+                    fill=LABEL_BG
+                )
+                # White label text
+                draw.text((x1 + pad, label_y + pad), label, fill=LABEL_FG, font=font)
+
+        except Exception as ann_err:
+            print(f"Custom annotation fallback: {ann_err}")
+            try:
+                annotated_bgr = result.plot()
+                annotated_rgb = annotated_bgr[..., ::-1]
+                annotated_pil = Image.fromarray(annotated_rgb)
+            except Exception:
+                annotated_pil = processed_img
 
         buf = io.BytesIO()
         annotated_pil.save(buf, format="JPEG", quality=92)
