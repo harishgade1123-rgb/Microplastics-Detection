@@ -500,9 +500,13 @@ document.addEventListener("DOMContentLoaded", () => {
       placeholderState.style.display = "none";
       zoomControls.style.display = "flex";
       if (compareToggleBtn) compareToggleBtn.style.display = "none";
+      if (toggleLabelsBtn) toggleLabelsBtn.style.display = "none";
+      if (cleanViewBtn) cleanViewBtn.style.display = "none";
       if (compareWrap) compareWrap.style.display = "none";
       if (imageWrapper) imageWrapper.style.display = "flex";
       compareMode = false;
+      rawViewMode = false;
+      labelsVisible = true;
       resetZoom();
       const img = new Image();
       img.onload = () => { infoResolution.textContent = `${img.naturalWidth} × ${img.naturalHeight}`; };
@@ -738,11 +742,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (paneSingle) paneSingle.classList.remove("pre-detection");
 
     if (data.annotated_image) {
+      annotatedWithLabelsSrc = data.annotated_image;
+      annotatedCleanBoxesSrc = data.annotated_clean_image || data.annotated_image;
+      labelsVisible = true;
+      rawViewMode = false;
+
       annotatedImg.src = data.annotated_image;
       annotatedImg.style.display = "block";
       placeholderState.style.display = "none";
       zoomControls.style.display = "flex";
       resetZoom();
+
+      if (toggleLabelsBtn) {
+        toggleLabelsBtn.style.display = "block";
+        toggleLabelsBtn.textContent = "🏷️ Hide Labels";
+      }
+      if (cleanViewBtn && originalSrc) {
+        cleanViewBtn.style.display = "block";
+        cleanViewBtn.textContent = "👁️ Raw Image";
+      }
 
       if (originalSrc) {
         if (typeof setupCompare === "function") setupCompare(originalSrc, data.annotated_image);
@@ -1654,11 +1672,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const compareToggleBtn = document.getElementById("compareToggleBtn");
   const originalImg        = document.getElementById("originalImg");
   const annotatedImgCompare = document.getElementById("annotatedImgCompare");
+  const toggleLabelsBtn    = document.getElementById("toggleLabelsBtn");
+  const cleanViewBtn       = document.getElementById("cleanViewBtn");
 
   let compareMode  = false;
   let originalSrc  = null;
   let compareDragging = false;
   let comparePos   = 50; // current position 0-100%
+  let labelsVisible = true;
+  let rawViewMode   = false;
+  let annotatedWithLabelsSrc = null;
+  let annotatedCleanBoxesSrc = null;
 
   function setComparePosition(pct) {
     pct = Math.max(0, Math.min(100, pct));
@@ -1735,6 +1759,37 @@ document.addEventListener("DOMContentLoaded", () => {
       compareToggleBtn.textContent = "⚡ Before/After";
     }
   });
+
+  // Toggle Labels button handler (Clean Boxes vs Full Labels)
+  if (toggleLabelsBtn) {
+    toggleLabelsBtn.addEventListener("click", () => {
+      labelsVisible = !labelsVisible;
+      if (!labelsVisible && annotatedCleanBoxesSrc) {
+        annotatedImg.src = annotatedCleanBoxesSrc;
+        toggleLabelsBtn.textContent = "🏷️ Show Labels";
+        showToast("Clean Bounding Boxes", "Text labels hidden for clean particle observation.", "info", 2000);
+      } else if (annotatedWithLabelsSrc) {
+        annotatedImg.src = annotatedWithLabelsSrc;
+        toggleLabelsBtn.textContent = "🏷️ Hide Labels";
+        showToast("Full Annotation", "Particle classification labels displayed.", "info", 2000);
+      }
+    });
+  }
+
+  // Clean Raw Image View toggle handler
+  if (cleanViewBtn) {
+    cleanViewBtn.addEventListener("click", () => {
+      rawViewMode = !rawViewMode;
+      if (rawViewMode && originalSrc) {
+        annotatedImg.src = originalSrc;
+        cleanViewBtn.textContent = "🔬 Show Detections";
+        showToast("Raw Microscope Image", "Viewing original image without bounding box overlays.", "info", 2000);
+      } else {
+        annotatedImg.src = labelsVisible ? (annotatedWithLabelsSrc || annotatedImg.src) : (annotatedCleanBoxesSrc || annotatedImg.src);
+        cleanViewBtn.textContent = "👁️ Raw Image";
+      }
+    });
+  }
 
   // ── DENSITY HEATMAP FEATURE ────────────────────────────
   const heatmapToggleBtn = document.getElementById("heatmapToggleBtn");

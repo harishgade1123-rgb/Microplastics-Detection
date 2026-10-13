@@ -499,8 +499,10 @@
 
               <!-- Overlay action button row -->
               <div class="overlay-btn-row" id="overlayBtnRow">
-                <button class="compare-toggle-btn" id="compareToggleBtn" style="display:none;">⚡ Before/After</button>
-                <button class="heatmap-toggle-btn" id="heatmapToggleBtn" style="display:none;">🔥 Heatmap</button>
+                <button class="compare-toggle-btn" id="compareToggleBtn" style="display:none;" title="Drag slider to compare raw vs detected image">⚡ Before/After</button>
+                <button class="compare-toggle-btn" id="toggleLabelsBtn" style="display:none;" title="Hide labels for clean microplastic view">🏷️ Hide Labels</button>
+                <button class="compare-toggle-btn" id="cleanViewBtn" style="display:none;" title="View original raw microscope image">👁️ Raw Image</button>
+                <button class="heatmap-toggle-btn" id="heatmapToggleBtn" style="display:none;" title="Show particle density heatmap">🔥 Heatmap</button>
               </div>
 
               <!-- Multi-Step Progress Bar -->
@@ -1232,74 +1234,6 @@
 
       </section>
     </div><!-- /paneEVS -->
-
-    <!-- ================================================================
-         SCAN HISTORY PANE
-         ================================================================ -->
-    <div id="paneHistory" class="tab-pane">
-      <section class="history-panel" style="padding: 24px; max-width: 1200px; margin: 0 auto;">
-        <div class="panel-header"
-          style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h2 style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">📅 Session
-              Scan History</h2>
-            <p style="color: var(--text-secondary); font-size: 13px;">Review previous microplastic detection results
-              from this session.</p>
-          </div>
-          <button class="icon-btn highlight" id="clearAllHistoryBtn" style="padding: 8px 16px; font-size: 13px;">🗑️
-            Clear History</button>
-        </div>
-
-        <!-- History Trend Chart -->
-        <div class="chart-card"
-          style="margin-bottom: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
-          <h3 class="chart-title"
-            style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px;">Detection Trend
-            (Current Session)</h3>
-          <div class="chart-wrap" style="height: 240px; position: relative;">
-            <canvas id="trendChart"></canvas>
-          </div>
-        </div>
-
-        <!-- History Table -->
-        <div class="data-table-wrap"
-          style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;">
-          <table class="data-table" style="width: 100%; border-collapse: collapse; text-align: left;">
-            <thead>
-              <tr style="background: var(--bg-elevated); border-bottom: 1px solid var(--border);">
-                <th
-                  style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">
-                  Timestamp</th>
-                <th
-                  style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">
-                  Sample</th>
-                <th
-                  style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">
-                  Total Particles</th>
-                <th
-                  style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">
-                  Avg Size (µm)</th>
-                <th
-                  style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">
-                  Hazard Level</th>
-                <th
-                  style="padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; text-align: right;">
-                  Action</th>
-              </tr>
-            </thead>
-            <tbody id="historyTableBody">
-              <tr>
-                <td colspan="6"
-                  style="text-align: center; color: var(--text-disabled); padding: 40px; font-size: 13px;">
-                  <div style="font-size: 32px; margin-bottom: 12px;">📭</div>
-                  No scans performed in this session yet. Upload a sample to begin tracking.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div><!-- /paneHistory -->
 
     <!-- ================================================================
          LAB REPORT PANE

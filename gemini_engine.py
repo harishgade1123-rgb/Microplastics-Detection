@@ -12,7 +12,7 @@ import re
 import warnings
 import requests  
 
-from PIL import Image, ImageDraw 
+from PIL import Image, ImageDraw, ImageFont 
 import numpy as np 
 
 from dotenv import load_dotenv  
@@ -134,8 +134,8 @@ def call_gemini_vision_api(pil_img, api_key, model_name=None):
     prompt = DATASET_TRAINING_PROMPT + "\n\nAnalyze this microplastic sample image and respond strictly with the JSON format specified above."
 
     # Priority list of working models on Gemini API
-    preferred = model_name or os.getenv("GEMINI_MODEL") or "gemini-3.5-flash"
-    candidates = [preferred, "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash", "gemini-2.5-pro"]
+    preferred = model_name or os.getenv("GEMINI_MODEL") or "gemini-3.6-flash"
+    candidates = [preferred, "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash", "gemini-flash-latest"]
     models_to_try = []
     for m in candidates:
         if m and m not in models_to_try and "2.0-flash" not in m:
@@ -211,70 +211,106 @@ def parse_gemini_json_response(raw_text):
     raise ValueError(f"No JSON object found in Gemini response: {raw_text[:200]}")
 
 
-def annotate_image_with_detections(pil_img, detections):
-    """Draw bounding boxes and labels onto the image based on detections."""
+def calculate_box_iou(box1, box2):
+    """Compute Intersection over Union between two [x1, y1, x2, y2] bounding boxes."""
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    area1 = max(1, (box1[2] - box1[0]) * (box1[3] - box1[1]))
+    area2 = max(1, (box2[2] - box2[0]) * (box2[3] - box2[1]))
+    union = area1 + area2 - inter
+    return inter / max(union, 1e-6)
+
+
+def annotate_image_with_detections(pil_img, detections, show_labels=True):
+    """
+    Draw sleek, scientific bounding boxes and high-contrast translucent pill badges.
+    Ensures every detected microplastic is prominently highlighted and clearly visible.
+    """
     img_copy = pil_img.copy()
-    draw = ImageDraw.Draw(img_copy)
+    draw = ImageDraw.Draw(img_copy, "RGBA")
     width, height = pil_img.size
 
     color_map = {
-        "Fiber": "#3b82f6",       # Blue
-        "Fragment": "#ef4444",    # Red
-        "Pellet / Nurdle": "#f59e0b", # Amber
-        "Film": "#10b981"         # Green
+        "Fiber": (59, 130, 246),           # Modern Blue (#3B82F6)
+        "Fragment": (239, 68, 68),         # Crimson Red (#EF4444)
+        "Pellet / Nurdle": (245, 158, 11), # High-vis Amber (#F59E0B)
+        "Film": (16, 185, 129)             # Emerald Green (#10B981)
     }
+
+    lw = max(2, int(min(width, height) / 250))
+    font_size = max(11, int(min(width, height) / 45))
+
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except Exception:
+        try:
+            font = ImageFont.load_default(size=font_size)
+        except Exception:
+            font = ImageFont.load_default()
+
+    LABEL_BG = (15, 23, 42, 220)  # High-contrast dark slate pill background
+    LABEL_FG = (255, 255, 255, 255)
 
     for det in detections:
         bbox = det.get("bbox", [])
-        morphology = det.get("morphology", "Fragment")
-        color = color_map.get(morphology, "#ec4899")
-
-        # Convert confidence safely
-        raw_conf = det.get("confidence")
+        if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+            continue
         try:
-            conf_val = float(raw_conf) if raw_conf is not None else 0.9
-        except (ValueError, TypeError):
-            conf_val = 0.9
+            coords = [float(c) for c in bbox]
+            if max(coords) <= 1.0:
+                x1, y1, x2, y2 = coords[0] * width, coords[1] * height, coords[2] * width, coords[3] * height
+            elif max(coords) <= 1000 and (width > 1000 or height > 1000):
+                x1, y1, x2, y2 = (coords[1]/1000.0)*width, (coords[0]/1000.0)*height, (coords[3]/1000.0)*width, (coords[2]/1000.0)*height
+            else:
+                x1, y1, x2, y2 = coords
 
-        if isinstance(bbox, list) and len(bbox) == 4:
-            try:
-                coords = [float(c) for c in bbox]
-                # Check if coordinates are normalized [0..1]
-                if max(coords) <= 1.0:
-                    x1 = coords[0] * width
-                    y1 = coords[1] * height
-                    x2 = coords[2] * width
-                    y2 = coords[3] * height
-                # Check if normalized 0..1000 scale (Gemini default [ymin, xmin, ymax, xmax])
-                elif max(coords) <= 1000 and (width > 1000 or height > 1000):
-                    y1 = (coords[0] / 1000.0) * height
-                    x1 = (coords[1] / 1000.0) * width
-                    y2 = (coords[2] / 1000.0) * height
-                    x2 = (coords[3] / 1000.0) * width
-                else:
-                    x1, y1, x2, y2 = coords
+            x1, x2 = min(x1, x2), max(x1, x2)
+            y1, y2 = min(y1, y2), max(y1, y2)
+            x1, y1 = max(0, min(width - 1, int(x1))), max(0, min(height - 1, int(y1)))
+            x2, y2 = max(x1 + 1, min(width, int(x2))), max(y1 + 1, min(height, int(y2)))
 
-                # Ensure top-left and bottom-right orientation
-                if x1 > x2:
-                    x1, x2 = x2, x1
-                if y1 > y2:
-                    y1, y2 = y2, y1
+            morphology = det.get("morphology", "Fragment")
+            color_rgb = color_map.get(morphology, (59, 130, 246))
 
-                # Clamp coordinates to image boundaries
-                x1 = max(0, min(width, x1))
-                y1 = max(0, min(height, y1))
-                x2 = max(0, min(width, x2))
-                y2 = max(0, min(height, y2))
+            # 1. Clean bounding box (2-3px outline)
+            for t in range(lw):
+                draw.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=color_rgb + (255,))
 
-                # Draw rectangle
-                draw.rectangle([x1, y1, x2, y2], outline=color, width=3)
+            # 2. Sleek pill badge (if show_labels is True)
+            if show_labels:
+                raw_c = det.get("confidence", 0.85)
+                try:
+                    conf_f = float(raw_c)
+                except Exception:
+                    conf_f = 0.85
+                label = f"#{det.get('id', 1)} {morphology} {int(conf_f * 100)}%"
 
-                # Draw label banner
-                label = f"#{det.get('id', 1)} {morphology} ({int(conf_val * 100)}%)"
-                draw.rectangle([x1, max(0, y1 - 20), x1 + len(label) * 8 + 10, y1], fill=color)
-                draw.text((x1 + 4, max(0, y1 - 18)), label, fill="white")
-            except Exception as err:
-                print(f"[Warn] Error drawing bbox {bbox}: {err}")
+                try:
+                    tb = font.getbbox(label)
+                    tw, th = tb[2] - tb[0], tb[3] - tb[1]
+                except Exception:
+                    tw, th = len(label) * 7, 12
+
+                pad = 4
+                lh = th + pad * 2
+                lw_box = tw + pad * 2 + 10
+
+                ly = (y1 - lh - 2) if (y1 - lh - 2) >= 0 else (y1 + 2)
+                lx = max(0, min(x1, width - lw_box))
+
+                # Background pill with colored border
+                draw.rectangle([lx, ly, lx + lw_box, ly + lh], fill=LABEL_BG, outline=color_rgb + (220,))
+                # Colored indicator dot
+                dot_r = 3
+                dot_cy = ly + lh // 2
+                draw.ellipse([lx + 4, dot_cy - dot_r, lx + 4 + dot_r * 2, dot_cy + dot_r], fill=color_rgb + (255,))
+                # White crisp text
+                draw.text((lx + 13, ly + pad), label, fill=LABEL_FG, font=font)
+        except Exception as err:
+            print(f"[Warn] Error drawing bbox {bbox}: {err}")
 
     buf = io.BytesIO()
     img_copy.save(buf, format="JPEG", quality=92)
@@ -283,26 +319,35 @@ def annotate_image_with_detections(pil_img, detections):
 
 
 def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25):
-    """Pure Python/Numpy high-contrast optical particle detection fallback."""
+    """
+    High-precision computer vision particle detection with multi-channel color saliency,
+    morphological geometry filtering, and IoU Non-Maximum Suppression (NMS).
+    Prevents background noise clutter while accurately identifying genuine microplastics.
+    """
     width, height = pil_img.size
+    img_np = np.array(pil_img.convert("RGB"))
     gray = np.array(pil_img.convert("L"), dtype=np.float32)
-    mean_val = float(np.mean(gray))
-    std_val = float(np.std(gray))
 
-    if mean_val < 110:
-        # Dark background (fluorescence)
-        thresh = min(240.0, mean_val + max(25.0, 1.2 * std_val))
-        mask = gray > thresh
-    else:
-        # Bright background (brightfield / filter mesh)
-        thresh = max(15.0, mean_val - max(20.0, 1.2 * std_val))
-        mask = gray < thresh
+    # 1. Color saliency: Chromatic distance from median background
+    median_color = np.median(img_np.reshape(-1, 3), axis=0)
+    color_dist = np.linalg.norm(img_np.astype(np.float32) - median_color, axis=2)
+
+    # 2. Local contrast: Luminance difference from mean background
+    mean_gray = float(np.mean(gray))
+    std_gray = float(np.std(gray))
+
+    norm_color = color_dist / max(1.0, np.percentile(color_dist, 98))
+    norm_contrast = np.abs(gray - mean_gray) / max(1.0, std_gray * 2.2)
+    saliency = 0.55 * norm_contrast + 0.45 * norm_color
+
+    saliency_thresh = max(0.40, np.percentile(saliency, 88))
+    mask = saliency > saliency_thresh
 
     step = 2
     sub = mask[::step, ::step]
     sh, sw = sub.shape
     sub_vis = np.zeros((sh, sw), dtype=bool)
-    boxes = []
+    candidates = []
 
     for r in range(sh):
         for c in range(sw):
@@ -311,9 +356,11 @@ def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25)
                 sub_vis[r, c] = True
                 min_r, max_r, min_c, max_c = r, r, c, c
                 pts = 0
+                sal_sum = 0.0
                 while queue:
                     curr_r, curr_c = queue.pop()
                     pts += 1
+                    sal_sum += saliency[curr_r * step, curr_c * step]
                     min_r = min(min_r, curr_r)
                     max_r = max(max_r, curr_r)
                     min_c = min(min_c, curr_c)
@@ -323,12 +370,35 @@ def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25)
                         if 0 <= nr < sh and 0 <= nc < sw and sub[nr, nc] and not sub_vis[nr, nc]:
                             sub_vis[nr, nc] = True
                             queue.append((nr, nc))
-                if 4 <= pts <= (sh * sw * 0.4):
-                    boxes.append((min_c * step, min_r * step, (max_c + 1) * step, (max_r + 1) * step, pts * step * step))
 
-    # Sort and cap top detections to avoid clutter
-    boxes.sort(key=lambda b: b[4], reverse=True)
-    boxes = boxes[:80]
+                box_w = (max_c - min_c + 1) * step
+                box_h = (max_r - min_r + 1) * step
+                area_px = box_w * box_h
+
+                # Strict noise rejection: exclude tiny sub-pixel artifacts (<40 px) and oversized full-frame artifacts
+                if 40 <= pts * (step**2) <= (width * height * 0.35) and max(box_w, box_h) >= 10:
+                    avg_sal = sal_sum / max(1, pts)
+                    confidence = round(float(min(0.96, max(0.35, 0.42 + 0.54 * avg_sal))), 2)
+                    if confidence >= conf_thresh:
+                        box = [min_c * step, min_r * step, (max_c + 1) * step, (max_r + 1) * step]
+                        candidates.append((box, confidence, area_px, box_w, box_h))
+
+    # Sort by confidence * area
+    candidates.sort(key=lambda x: (x[1], x[2]), reverse=True)
+
+    # IoU Non-Maximum Suppression (NMS) to eliminate duplicate/overlapping boxes
+    filtered_boxes = []
+    for cand in candidates:
+        box = cand[0]
+        overlap = False
+        for chosen in filtered_boxes:
+            if calculate_box_iou(box, chosen[0]) > 0.30:
+                overlap = True
+                break
+        if not overlap:
+            filtered_boxes.append(cand)
+            if len(filtered_boxes) >= 25:  # Cap at top distinct particles to prevent visual clutter
+                break
 
     detections = []
     morphology_counts = {"Fiber": 0, "Fragment": 0, "Pellet / Nurdle": 0, "Film": 0}
@@ -343,20 +413,18 @@ def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25)
     total_conf = 0.0
     high_conf = 0
 
-    for x1, y1, x2, y2, area_px in boxes:
-        w_px = x2 - x1
-        h_px = y2 - y1
+    for box, conf, area_px, w_px, h_px in filtered_boxes:
         w_um = round(w_px * um_per_px, 1)
         h_um = round(h_px * um_per_px, 1)
         area_um2 = round(area_px * (um_per_px ** 2), 1)
         max_dim_um = max(w_um, h_um)
         aspect = round(w_px / max(h_px, 0.1), 2)
 
-        if aspect >= 3.0 or aspect <= 0.33:
+        if aspect >= 2.8 or aspect <= 0.35:
             morphology = "Fiber"
-        elif aspect >= 0.8 and aspect <= 1.25 and area_px >= 80:
+        elif 0.8 <= aspect <= 1.25 and area_px >= 180:
             morphology = "Pellet / Nurdle"
-        elif area_px > 800 and (aspect < 0.8 or aspect > 1.25):
+        elif area_px > 1200 and (aspect < 0.8 or aspect > 1.25):
             morphology = "Film"
         else:
             morphology = "Fragment"
@@ -370,7 +438,6 @@ def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25)
         else:
             size_band = "Mesoplastic (>1000 µm)"
 
-        conf = round(float(min(0.97, max(0.65, 0.76 + (area_px / 1200.0)))), 2)
         if conf >= 0.5:
             high_conf += 1
         total_conf += conf
@@ -384,7 +451,7 @@ def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25)
             "morphology": morphology,
             "size_band": size_band,
             "confidence": conf,
-            "bbox": [x1, y1, x2, y2],
+            "bbox": box,
             "width_px": w_px,
             "height_px": h_px,
             "area_px": int(area_px),
@@ -412,19 +479,9 @@ def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25)
         risk = "High Contamination Hazard"
         risk_color = "#ef4444"
 
-    annotated = pil_img.copy()
-    draw = ImageDraw.Draw(annotated)
-    color_map = {"Fiber": "#3b82f6", "Fragment": "#ef4444", "Pellet / Nurdle": "#f59e0b", "Film": "#10b981"}
-
-    for d in detections:
-        bb = d["bbox"]
-        c = color_map.get(d["morphology"], "#ec4899")
-        draw.rectangle(bb, outline=c, width=2)
-        draw.text((bb[0] + 2, max(0, bb[1] - 12)), f"#{d['id']} {d['morphology']}", fill=c)
-
-    buf = io.BytesIO()
-    annotated.save(buf, format="JPEG", quality=90)
-    annotated_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+    # Generate both full-label and clean-box versions for high-clarity viewing
+    annotated_b64 = annotate_image_with_detections(pil_img, detections, show_labels=True)
+    clean_boxes_b64 = annotate_image_with_detections(pil_img, detections, show_labels=False)
 
     dom_morph = max(morphology_counts, key=morphology_counts.get) if p_count > 0 else "None"
     return {
@@ -437,6 +494,7 @@ def optical_contour_fallback_detection(pil_img, um_per_px=1.5, conf_thresh=0.25)
         "size_band_counts": size_band_counts,
         "detections": detections,
         "annotated_image": annotated_b64,
+        "annotated_clean_image": clean_boxes_b64,
         "image_dimensions": {"width": width, "height": height},
         "um_per_px": um_per_px,
         "ai_analysis": f"Optical computer vision analysis identified {p_count} microplastic particles. Morphology profile shows dominant {dom_morph} structure with contamination hazard assessed as {risk}.",
@@ -468,11 +526,14 @@ def detect_microplastics_with_gemini(pil_img, conf_thresh=0.25, um_per_px=1.5):
 
                 detections = result_json.get("detections", [])
                 if detections:
-                    result_json["annotated_image"] = annotate_image_with_detections(pil_img, detections)
+                    result_json["annotated_image"] = annotate_image_with_detections(pil_img, detections, show_labels=True)
+                    result_json["annotated_clean_image"] = annotate_image_with_detections(pil_img, detections, show_labels=False)
                 else:
                     buf = io.BytesIO()
                     pil_img.save(buf, format="JPEG")
-                    result_json["annotated_image"] = f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+                    base_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+                    result_json["annotated_image"] = base_b64
+                    result_json["annotated_clean_image"] = base_b64
 
                 return result_json
         except Exception as e:
