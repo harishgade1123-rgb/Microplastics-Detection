@@ -10,6 +10,22 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='40' y2='40'%3E%3Cstop offset='0%25' stop-color='%232DD4BF'/%3E%3Cstop offset='100%25' stop-color='%2322D3EE'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 2L35.5 11V29L20 38L4.5 29V11L20 2Z' stroke='url(%23g)' stroke-width='3' fill='%230B0F17'/%3E%3Ccircle cx='20' cy='20' r='5' fill='%232DD4BF'/%3E%3C/svg%3E">
 
+  <script>
+    // Immediate Anti-FOUT theme initializer
+    (function() {
+      try {
+        const saved = localStorage.getItem('microdetect_theme');
+        if (saved === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        } else if (saved === 'dark') {
+          document.documentElement.removeAttribute('data-theme');
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
   <style>
     :root {
       --bg-dark: #070c14;
@@ -27,6 +43,25 @@
       --border-subtle: rgba(255, 255, 255, 0.08);
       --border-cyan: rgba(45, 212, 191, 0.25);
       --border-card: rgba(45, 212, 191, 0.15);
+    }
+
+    /* Light Theme Variables */
+    [data-theme="light"] {
+      --bg-dark: #f8fafc;
+      --bg-card: rgba(255, 255, 255, 0.94);
+      --bg-surface: #f1f5f9;
+      --primary: #0d9488;
+      --primary-cyan: #0284c7;
+      --primary-glow: rgba(13, 148, 136, 0.25);
+      --secondary: #0284c7;
+      --accent-orange: #d97706;
+      --accent-green: #059669;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #64748b;
+      --border-subtle: rgba(15, 23, 42, 0.08);
+      --border-cyan: rgba(13, 148, 136, 0.28);
+      --border-card: rgba(13, 148, 136, 0.2);
     }
 
     * {
@@ -160,6 +195,49 @@
       background: rgba(22, 34, 52, 0.85);
       color: #ffffff;
       border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .landing-theme-toggle {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(18, 30, 44, 0.85);
+      border: 1px solid rgba(45, 212, 191, 0.28);
+      color: #38bdf8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      padding: 0;
+      outline: none;
+    }
+
+    .landing-theme-toggle:hover {
+      background: rgba(24, 40, 60, 0.95);
+      border-color: var(--primary);
+      color: #2dd4bf;
+      transform: translateY(-2px) scale(1.06);
+      box-shadow: 0 0 22px rgba(45, 212, 191, 0.45);
+    }
+
+    .landing-theme-toggle:active {
+      transform: scale(0.95);
+    }
+
+    .theme-icon-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     .btn-start-nav {
@@ -1146,6 +1224,309 @@
         font-size: 36px;
       }
     }
+    /* ============================================================
+       LIGHT THEME SYSTEM OVERRIDES ([data-theme="light"])
+       ============================================================ */
+    body, .hero-card, .feat-card, .nav-pill, .hero-tab-pill, .cat-nav-card, .guide-box, .bento-env-card, .wf-step-card, .cap-card, footer {
+      transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    [data-theme="light"] body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(13, 148, 136, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 35%, rgba(2, 132, 199, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.06) 0%, transparent 60%);
+    }
+
+    [data-theme="light"] .landing-theme-toggle {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(13, 148, 136, 0.3);
+      color: #d97706;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+    }
+
+    [data-theme="light"] .landing-theme-toggle:hover {
+      background: #ffffff;
+      border-color: #0d9488;
+      color: #b45309;
+      box-shadow: 0 6px 22px rgba(13, 148, 136, 0.28);
+    }
+
+    [data-theme="light"] .logo-text,
+    [data-theme="light"] .logo-text span {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .nav-pill-home {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(13, 148, 136, 0.35);
+      color: #0f172a;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+    }
+
+    [data-theme="light"] .nav-pill-explore {
+      background: rgba(241, 245, 249, 0.85);
+      border-color: rgba(15, 23, 42, 0.1);
+      color: #475569;
+    }
+
+    [data-theme="light"] .nav-pill-explore:hover {
+      background: #ffffff;
+      color: #0f172a;
+      border-color: rgba(13, 148, 136, 0.3);
+    }
+
+    [data-theme="light"] .hero-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.94) 100%);
+      border: 1px solid rgba(13, 148, 136, 0.22);
+      box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+
+    [data-theme="light"] .hero-card::before {
+      background: linear-gradient(90deg, transparent, rgba(13, 148, 136, 0.45), transparent);
+    }
+
+    [data-theme="light"] .hero-badge {
+      background: rgba(13, 148, 136, 0.08);
+      border-color: rgba(13, 148, 136, 0.28);
+      color: #0d9488;
+    }
+
+    [data-theme="light"] .hero-title {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .hero-desc {
+      color: #475569;
+    }
+
+    [data-theme="light"] .btn-hero-secondary {
+      background: rgba(255, 255, 255, 0.88);
+      border-color: rgba(15, 23, 42, 0.12);
+      color: #1e293b;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .btn-hero-secondary:hover {
+      background: #ffffff;
+      color: #0f172a;
+      border-color: rgba(13, 148, 136, 0.4);
+      box-shadow: 0 4px 18px rgba(13, 148, 136, 0.16);
+    }
+
+    [data-theme="light"] .feat-card {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .feat-card:hover {
+      background: #ffffff;
+      border-color: rgba(13, 148, 136, 0.35);
+      box-shadow: 0 8px 25px rgba(15, 23, 42, 0.08);
+    }
+
+    [data-theme="light"] .feat-icon-box {
+      background: rgba(13, 148, 136, 0.08);
+      border-color: rgba(13, 148, 136, 0.22);
+      color: #0d9488;
+    }
+
+    [data-theme="light"] .feat-info h4 {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .feat-info p {
+      color: #475569;
+    }
+
+    [data-theme="light"] .hero-tabs-row {
+      border-top-color: rgba(15, 23, 42, 0.08);
+    }
+
+    [data-theme="light"] .hero-tab-pill {
+      background: rgba(255, 255, 255, 0.88);
+      border-color: rgba(15, 23, 42, 0.1);
+      color: #475569;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    }
+
+    [data-theme="light"] .hero-tab-pill:hover {
+      background: #ffffff;
+      color: #0f172a;
+      border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    [data-theme="light"] .hero-tab-pill.active {
+      background: linear-gradient(135deg, #0d9488 0%, #0284c7 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 22px rgba(13, 148, 136, 0.35);
+    }
+
+    [data-theme="light"] .section-title {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .section-desc {
+      color: #475569;
+    }
+
+    [data-theme="light"] .circular-lens-desc strong {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .circular-lens-desc {
+      color: #475569;
+    }
+
+    [data-theme="light"] .cat-nav-card {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
+    }
+
+    [data-theme="light"] .cat-nav-card:hover {
+      background: #ffffff;
+      border-color: rgba(13, 148, 136, 0.35);
+      box-shadow: 0 8px 25px rgba(15, 23, 42, 0.07);
+    }
+
+    [data-theme="light"] .cat-nav-card.active {
+      background: linear-gradient(135deg, rgba(13, 148, 136, 0.14) 0%, rgba(2, 132, 199, 0.06) 100%);
+      border-color: #0d9488;
+      box-shadow: 0 4px 22px rgba(13, 148, 136, 0.2);
+    }
+
+    [data-theme="light"] .cat-card-title {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .info-banner {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(2, 132, 199, 0.28);
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .info-banner p {
+      color: #334155;
+    }
+
+    [data-theme="light"] .guide-box {
+      background: rgba(255, 255, 255, 0.94);
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 10px 32px rgba(15, 23, 42, 0.05);
+    }
+
+    [data-theme="light"] .guide-box-header {
+      color: #0f172a;
+      border-bottom-color: rgba(15, 23, 42, 0.08);
+    }
+
+    [data-theme="light"] .step-details h5 {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .step-details p {
+      color: #475569;
+    }
+
+    [data-theme="light"] .tips-list strong {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .tips-list li {
+      color: #475569;
+    }
+
+    [data-theme="light"] .bento-env-card {
+      background: rgba(255, 255, 255, 0.94);
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .bento-env-card:hover {
+      border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    [data-theme="light"] .bento-env-card h4 {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .bento-env-card p,
+    [data-theme="light"] .bento-env-card ul {
+      color: #475569;
+    }
+
+    [data-theme="light"] .bento-fact-box {
+      background: rgba(15, 23, 42, 0.04);
+      color: #1e293b;
+    }
+
+    [data-theme="light"] .wf-step-card {
+      background: rgba(255, 255, 255, 0.94);
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 8px 25px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .wf-step-card:hover {
+      border-color: #0d9488;
+      box-shadow: 0 12px 30px rgba(13, 148, 136, 0.18);
+    }
+
+    [data-theme="light"] .wf-step-card h5 {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .wf-step-card p {
+      color: #475569;
+    }
+
+    [data-theme="light"] .wf-step-num {
+      border-color: #ffffff;
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    [data-theme="light"] .cap-card {
+      background: rgba(255, 255, 255, 0.94);
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 8px 25px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .cap-card:hover {
+      border-color: rgba(13, 148, 136, 0.38);
+      box-shadow: 0 12px 30px rgba(13, 148, 136, 0.15);
+    }
+
+    [data-theme="light"] .cap-card h4 {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .cap-card p {
+      color: #475569;
+    }
+
+    [data-theme="light"] footer {
+      border-top-color: rgba(15, 23, 42, 0.08);
+      color: #64748b;
+    }
+
+    [data-theme="light"] .footer-left {
+      color: #0f172a;
+    }
+
+    @media (max-width: 580px) {
+      .btn-start-nav {
+        padding: 9px 16px;
+        font-size: 13px;
+      }
+      .landing-theme-toggle {
+        width: 38px;
+        height: 38px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1191,13 +1572,23 @@
         </a>
       </div>
 
-      <a href="/dashboard.html" class="btn-start-nav">
-        Start Detection
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
-      </a>
+      <div class="nav-right">
+        <button class="landing-theme-toggle" id="themeToggleBtn" aria-label="Toggle Light / Dark Mode" title="Toggle Light / Dark Mode">
+          <span class="theme-icon-slot" id="themeIconSlot">
+            <svg class="theme-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+
+        <a href="/dashboard.html" class="btn-start-nav">
+          Start Detection
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+      </div>
     </nav>
 
     <!-- ============================================================
@@ -1679,6 +2070,60 @@
       });
     }
 
+    // ============================================================
+    // THEME TOGGLE HANDLER (Dark / Light Mode)
+    // ============================================================
+    (function initThemeToggle() {
+      const btn = document.getElementById('themeToggleBtn');
+      const iconSlot = document.getElementById('themeIconSlot');
+      if (!btn || !iconSlot) return;
+
+      const sunSvg = `
+        <svg class="theme-icon-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>`;
+
+      const moonSvg = `
+        <svg class="theme-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>`;
+
+      function updateIcon(isLight) {
+        iconSlot.style.transform = 'scale(0.5) rotate(90deg)';
+        setTimeout(() => {
+          iconSlot.innerHTML = isLight ? sunSvg : moonSvg;
+          btn.title = isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+          btn.setAttribute('aria-label', isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode');
+          iconSlot.style.transform = 'scale(1) rotate(0deg)';
+        }, 120);
+      }
+
+      // Check current state on initialization
+      const isCurrentlyLight = document.documentElement.getAttribute('data-theme') === 'light';
+      updateIcon(isCurrentlyLight);
+
+      btn.addEventListener('click', () => {
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        if (isLight) {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('microdetect_theme', 'dark');
+          updateIcon(false);
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('microdetect_theme', 'light');
+          updateIcon(true);
+        }
+      });
+    })();
+
     // Ambient floating microscopic particles canvas simulation
     (function initAmbientParticles() {
       const canvas = document.getElementById('ambient-canvas');
@@ -1702,13 +2147,15 @@
           radius: Math.random() * 2.2 + 0.6,
           vx: (Math.random() - 0.5) * 0.45,
           vy: (Math.random() - 0.5) * 0.45,
-          color: Math.random() > 0.4 ? 'rgba(45, 212, 191, ' : 'rgba(56, 189, 248, ',
-          alpha: Math.random() * 0.4 + 0.15
+          colorDark: Math.random() > 0.4 ? 'rgba(45, 212, 191, ' : 'rgba(56, 189, 248, ',
+          colorLight: Math.random() > 0.4 ? 'rgba(13, 148, 136, ' : 'rgba(2, 132, 199, ',
+          alpha: Math.random() * 0.35 + 0.15
         });
       }
 
       function render() {
         ctx.clearRect(0, 0, width, height);
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
         for (let i = 0; i < particles.length; i++) {
           const p = particles[i];
@@ -1720,11 +2167,12 @@
           if (p.y < 0) p.y = height;
           if (p.y > height) p.y = 0;
 
+          const colorBase = isLight ? p.colorLight : p.colorDark;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fillStyle = p.color + p.alpha + ')';
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = p.color + '0.6)';
+          ctx.fillStyle = colorBase + (isLight ? p.alpha * 0.75 : p.alpha) + ')';
+          ctx.shadowBlur = isLight ? 4 : 10;
+          ctx.shadowColor = colorBase + (isLight ? '0.3)' : '0.6)');
           ctx.fill();
         }
 

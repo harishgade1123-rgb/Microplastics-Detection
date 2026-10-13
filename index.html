@@ -471,32 +471,37 @@
             <div class="gauge-card">
               <div class="gauge-card-title">⚠️ Contamination Risk Meter</div>
               <div class="gauge-wrap">
-                <svg class="gauge-svg" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg">
+                <svg class="gauge-svg" viewBox="0 0 200 115" xmlns="http://www.w3.org/2000/svg">
                   <!-- Track arc (bottom half of circle) -->
-                  <path d="M 15,100 A 85,85 0 0,1 185,100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="18" stroke-linecap="round"/>
+                  <path d="M 24,94 A 76,76 0 0,1 176,94" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="14"
+                    stroke-linecap="round" />
                   <!-- Colored fill arc -->
-                  <path id="gaugeFillArc" d="M 15,100 A 85,85 0 0,1 185,100" fill="none" stroke="url(#gaugeGrad)" stroke-width="18" stroke-linecap="round" stroke-dasharray="267" stroke-dashoffset="267" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1);"/>
-                  <!-- Tick marks -->
-                  <g stroke="rgba(255,255,255,0.15)" stroke-width="1.5">
-                    <line x1="100" y1="16" x2="100" y2="8"/>
-                    <line x1="52" y1="29" x2="47" y2="22"/>
-                    <line x1="20" y1="66" x2="13" y2="62"/>
-                    <line x1="148" y1="29" x2="153" y2="22"/>
-                    <line x1="180" y1="66" x2="187" y2="62"/>
+                  <path id="gaugeFillArc" d="M 24,94 A 76,76 0 0,1 176,94" fill="none" stroke="url(#gaugeGrad)"
+                    stroke-width="14" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="239"
+                    style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1);" />
+                  <!-- Tick marks outside the arc -->
+                  <g stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linecap="round">
+                    <line x1="100" y1="11" x2="100" y2="5" />
+                    <line x1="46" y1="40" x2="41" y2="35" />
+                    <line x1="154" y1="40" x2="159" y2="35" />
                   </g>
-                  <!-- Zone labels -->
-                  <text x="16" y="104" font-size="8" fill="#34D399" font-family="Inter,sans-serif" font-weight="700">LOW</text>
-                  <text x="83" y="14" font-size="8" fill="#FBBF24" font-family="Inter,sans-serif" font-weight="700">MOD</text>
-                  <text x="162" y="104" font-size="8" fill="#F87171" font-family="Inter,sans-serif" font-weight="700">HIGH</text>
+                  <!-- Zone endpoints cleanly positioned below the arc ends -->
+                  <text x="24" y="111" font-size="8" fill="#34D399" font-family="'Inter',sans-serif"
+                    font-weight="700" text-anchor="middle">LOW</text>
+                  <text x="176" y="111" font-size="8" fill="#F87171" font-family="'Inter',sans-serif"
+                    font-weight="700" text-anchor="middle">HIGH</text>
                   <!-- Needle -->
-                  <line id="gaugeNeedle" x1="100" y1="100" x2="100" y2="22" stroke="#E8EBF0" stroke-width="2.5" stroke-linecap="round" style="transform-origin:100px 100px; transform:rotate(-90deg); transition:transform 1.2s cubic-bezier(0.34,1.56,0.64,1);"/>
-                  <circle cx="100" cy="100" r="5" fill="#E8EBF0"/>
+                  <line id="gaugeNeedle" x1="100" y1="94" x2="100" y2="28" stroke="#F1F5F9" stroke-width="2.5"
+                    stroke-linecap="round"
+                    style="transform-origin:100px 94px; transform:rotate(-90deg); transition:transform 1.2s cubic-bezier(0.34,1.56,0.64,1);" />
+                  <circle cx="100" cy="94" r="5.5" fill="#F1F5F9" />
+                  <circle cx="100" cy="94" r="2.2" fill="#0B1320" />
                   <!-- Gradient def -->
                   <defs>
                     <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stop-color="#34D399"/>
-                      <stop offset="50%" stop-color="#FBBF24"/>
-                      <stop offset="100%" stop-color="#F87171"/>
+                      <stop offset="0%" stop-color="#34D399" />
+                      <stop offset="45%" stop-color="#FBBF24" />
+                      <stop offset="85%" stop-color="#F87171" />
                     </linearGradient>
                   </defs>
                 </svg>

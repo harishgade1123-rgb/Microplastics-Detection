@@ -913,23 +913,38 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (risk.includes("moderate")) score = Math.max(score, 35);
     else if (risk.includes("low") || risk.includes("safe")) score = Math.min(score, 30);
 
-    // Arc: full arc length ≈ 267, dashoffset controls fill from 0 (full) to 267 (empty)
-    const arcLen = 267;
+    // Arc: full arc length ≈ 239 (pi * 76), dashoffset controls fill from 0 (full) to 239 (empty)
+    const arcLen = 239;
     const offset = arcLen - Math.round((score / 100) * arcLen);
     arc.style.strokeDashoffset = offset;
 
-    // Needle: rotate from -90deg (score=0) to +90deg (score=100)
+    // Needle: rotate around (100, 94) from -90deg (score=0) to +90deg (score=100)
     const deg = -90 + (score / 100) * 180;
+    needle.style.transformOrigin = "100px 94px";
     needle.style.transform = `rotate(${deg}deg)`;
 
-    // Center label
+    // Center readout & badge pill
     scoreEl.textContent = score;
     let lbl = "Safe";
     let color = "#34D399";
-    if (score > 60) { lbl = "Critical"; color = "#F87171"; }
-    else if (score > 30) { lbl = "Moderate"; color = "#FBBF24"; }
+    let bg = "rgba(52, 211, 153, 0.12)";
+    let border = "rgba(52, 211, 153, 0.35)";
+    if (score > 60) {
+      lbl = "Critical";
+      color = "#F87171";
+      bg = "rgba(248, 113, 113, 0.12)";
+      border = "rgba(248, 113, 113, 0.35)";
+    } else if (score > 25) {
+      lbl = "Moderate";
+      color = "#FBBF24";
+      bg = "rgba(251, 191, 36, 0.12)";
+      border = "rgba(251, 191, 36, 0.35)";
+    }
     labelEl.textContent = lbl;
     scoreEl.style.color = color;
+    labelEl.style.color = color;
+    labelEl.style.background = bg;
+    labelEl.style.borderColor = border;
 
     gaugeRow.style.display = "grid";
   }
