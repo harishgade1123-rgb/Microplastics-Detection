@@ -1080,8 +1080,16 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================
   // CHARTS (3 total)
   // ============================
+  let lastDetectionData = null;
   function renderCharts(data) {
     if (typeof Chart === "undefined") return;
+    lastDetectionData = data;
+
+    const isLight = document.documentElement.getAttribute("data-theme") === "light";
+    const chartTickColor = isLight ? "#1E293B" : "#94a3b8";
+    const chartGridColor = isLight ? "rgba(148, 163, 184, 0.3)" : "rgba(255,255,255,0.05)";
+    const chartTitleColor = isLight ? "#090D16" : "#8A93A6";
+    const chartLegendColor = isLight ? "#090D16" : "#cbd5e1";
 
     // --- Chart 1: Size Distribution Histogram (Task #5 – gradient bars) ---
     const sizeCtx = document.getElementById("sizeChart").getContext("2d");
@@ -1129,10 +1137,10 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         },
         scales: {
-          x: { ticks: { color: "#94a3b8", font: { size: 9 } }, grid: { display: false } },
+          x: { ticks: { color: chartTickColor, font: { size: 9, weight: isLight ? "600" : "400" } }, grid: { display: false } },
           y: {
-            ticks: { color: "#94a3b8", stepSize: 1, precision: 0 },
-            grid: { color: "rgba(255,255,255,0.05)" },
+            ticks: { color: chartTickColor, stepSize: 1, precision: 0, font: { weight: isLight ? "600" : "400" } },
+            grid: { color: chartGridColor },
             beginAtZero: true
           }
         },
@@ -1159,10 +1167,10 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.font = "bold 22px Inter, sans-serif";
-        ctx.fillStyle = "#E8EBF0";
+        ctx.fillStyle = isLight ? "#090D16" : "#E8EBF0";
         ctx.fillText(morphTotal, cx, cy - 10);
-        ctx.font = "11px Inter, sans-serif";
-        ctx.fillStyle = "#8A93A6";
+        ctx.font = isLight ? "600 11px Inter, sans-serif" : "11px Inter, sans-serif";
+        ctx.fillStyle = isLight ? "#334155" : "#8A93A6";
         ctx.fillText("particles", cx, cy + 10);
         ctx.restore();
       }
@@ -1196,7 +1204,7 @@ document.addEventListener("DOMContentLoaded", () => {
         plugins: {
           legend: {
             position: "right",
-            labels: { color: "#cbd5e1", font: { size: 10, family: "Inter" }, boxWidth: 12, padding: 14 }
+            labels: { color: chartLegendColor, font: { size: 10, family: "Inter", weight: isLight ? "600" : "400" }, boxWidth: 12, padding: 14 }
           },
           tooltip: {
             callbacks: {
@@ -1252,7 +1260,7 @@ document.addEventListener("DOMContentLoaded", () => {
         plugins: {
           legend: {
             position: "top",
-            labels: { color: "#cbd5e1", font: { size: 10, family: "Inter" }, boxWidth: 10, padding: 12 }
+            labels: { color: chartLegendColor, font: { size: 10, family: "Inter", weight: isLight ? "600" : "400" }, boxWidth: 10, padding: 12 }
           },
           tooltip: {
             callbacks: {
@@ -1262,15 +1270,15 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         scales: {
           x: {
-            title: { display: true, text: "Particle Size (µm)", color: "#8A93A6", font: { size: 10 } },
-            ticks: { color: "#94a3b8", font: { size: 9 } },
-            grid: { color: "rgba(255,255,255,0.04)" }
+            title: { display: true, text: "Particle Size (µm)", color: chartTitleColor, font: { size: 10, weight: isLight ? "700" : "500" } },
+            ticks: { color: chartTickColor, font: { size: 9, weight: isLight ? "600" : "400" } },
+            grid: { color: chartGridColor }
           },
           y: {
-            title: { display: true, text: "Confidence (%)", color: "#8A93A6", font: { size: 10 } },
+            title: { display: true, text: "Confidence (%)", color: chartTitleColor, font: { size: 10, weight: isLight ? "700" : "500" } },
             min: 0, max: 100,
-            ticks: { color: "#94a3b8", callback: v => v + "%" },
-            grid: { color: "rgba(255,255,255,0.05)" }
+            ticks: { color: chartTickColor, font: { weight: isLight ? "600" : "400" }, callback: v => v + "%" },
+            grid: { color: chartGridColor }
           }
         },
         animation: { duration: 900, easing: "easeOutQuart" }
@@ -1892,6 +1900,9 @@ document.addEventListener("DOMContentLoaded", () => {
         themeToggleBtn.textContent = "🌙";
         localStorage.setItem("microdetect_theme", "dark");
         showToast("Theme Updated", "Scientific Dark Console mode enabled.", "info", 2000);
+      }
+      if (typeof renderCharts === "function" && lastDetectionData) {
+        renderCharts(lastDetectionData);
       }
     });
   }
