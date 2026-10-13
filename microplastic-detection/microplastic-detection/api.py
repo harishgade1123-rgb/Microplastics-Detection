@@ -249,13 +249,16 @@ def detect():
             risk_color = "#ef4444"
 
         # Custom annotation — blue boxes with "microplastic 0.35" labels (new style)
+        base64_clean_img = ""
         try:
             from PIL import ImageDraw, ImageFont
             annotated_pil = processed_img.copy()
+            annotated_clean_pil = processed_img.copy()
             draw = ImageDraw.Draw(annotated_pil, "RGBA")
+            draw_clean = ImageDraw.Draw(annotated_clean_pil, "RGBA")
 
             BOX_COLOR = (59, 130, 246)        # #3B82F6 blue (RGB)
-            LABEL_BG   = (0, 0, 0, 180)       # semi-transparent dark background
+            LABEL_BG   = (15, 23, 42, 220)    # semi-transparent dark pill background
             LABEL_FG   = (255, 255, 255, 255) # white text
             lw = max(2, int(min(annotated_pil.width, annotated_pil.height) / 300))
 
@@ -272,9 +275,10 @@ def detect():
             for d in boxes_data:
                 x1, y1, x2, y2 = [int(v) for v in d["bbox"]]
 
-                # Draw bounding box (blue)
+                # Draw bounding box on both annotated and clean images
                 for t in range(lw):
                     draw.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=BOX_COLOR)
+                    draw_clean.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=BOX_COLOR)
 
                 # Label: "microplastic 0.35"
                 label = f"{d['class'].lower()} {d['confidence']:.2f}"
@@ -289,13 +293,17 @@ def detect():
                 label_h = text_h + pad * 2
                 label_y = (y1 - label_h) if (y1 - label_h) >= 0 else y1 + 2
 
-                # Dark background for label
+                # Dark pill background for label
                 draw.rectangle(
                     [x1, label_y, x1 + text_w + pad * 2, label_y + label_h],
                     fill=LABEL_BG
                 )
                 # White label text
                 draw.text((x1 + pad, label_y + pad), label, fill=LABEL_FG, font=font)
+
+            buf_clean = io.BytesIO()
+            annotated_clean_pil.save(buf_clean, format="JPEG", quality=92)
+            base64_clean_img = base64.b64encode(buf_clean.getvalue()).decode("utf-8")
 
         except Exception as ann_err:
             print(f"Custom annotation fallback: {ann_err}")
@@ -309,6 +317,8 @@ def detect():
         buf = io.BytesIO()
         annotated_pil.save(buf, format="JPEG", quality=92)
         base64_img = base64.b64encode(buf.getvalue()).decode("utf-8")
+        if not base64_clean_img:
+            base64_clean_img = base64_img
 
         return jsonify({
             "success": True,
@@ -323,6 +333,7 @@ def detect():
             "size_band_counts": size_band_counts,
             "detections": boxes_data,
             "annotated_image": f"data:image/jpeg;base64,{base64_img}",
+            "annotated_clean_image": f"data:image/jpeg;base64,{base64_clean_img}",
             "image_dimensions": {"width": width, "height": height},
             "engine_used": "YOLOv8 Internal Microservice"
         })
