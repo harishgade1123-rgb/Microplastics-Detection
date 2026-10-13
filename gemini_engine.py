@@ -167,6 +167,9 @@ def call_gemini_vision_api(pil_img, api_key, model_name=None):
                     parts = candidates[0].get("content", {}).get("parts", [])
                     if parts and "text" in parts[0]:
                         return parts[0]["text"]
+            elif resp.status_code in (429, 403):
+                last_error = f"Gemini API quota exceeded or unauthorized (HTTP {resp.status_code})"
+                break
             else:
                 last_error = f"Model {m} returned HTTP {resp.status_code}: {resp.text[:120]}"
         except Exception as e:
