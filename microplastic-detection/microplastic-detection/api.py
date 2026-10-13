@@ -274,14 +274,26 @@ def detect():
 
             for d in boxes_data:
                 x1, y1, x2, y2 = [int(v) for v in d["bbox"]]
+                morphology = d.get("morphology", "Fragment")
+                color_map = {
+                    "Fiber": (59, 130, 246),           # Blue
+                    "Fragment": (239, 68, 68),         # Red
+                    "Pellet / Nurdle": (245, 158, 11), # Amber
+                    "Film": (16, 185, 129)             # Emerald
+                }
+                box_col = color_map.get(morphology, BOX_COLOR)
 
-                # Draw bounding box on both annotated and clean images
-                for t in range(lw):
-                    draw.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=BOX_COLOR)
-                    draw_clean.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=BOX_COLOR)
+                # Draw bounding box safely on both annotated and clean images
+                actual_lw = min(lw, max(1, (x2 - x1) // 2), max(1, (y2 - y1) // 2))
+                for t in range(actual_lw):
+                    bx0, by0 = x1 + t, y1 + t
+                    bx1, by1 = x2 - t, y2 - t
+                    if bx1 > bx0 and by1 > by0:
+                        draw.rectangle([bx0, by0, bx1, by1], outline=box_col)
+                        draw_clean.rectangle([bx0, by0, bx1, by1], outline=box_col)
 
-                # Label: "microplastic 0.35"
-                label = f"{d['class'].lower()} {d['confidence']:.2f}"
+                # Label: "#1 Fragment 85%"
+                label = f"#{d['id']} {morphology} {int(d['confidence'] * 100)}%"
                 try:
                     bbox_t = font.getbbox(label)
                     text_w = bbox_t[2] - bbox_t[0]
@@ -290,16 +302,23 @@ def detect():
                     text_w, text_h = len(label) * 7, 14
 
                 pad = 4
-                label_h = text_h + pad * 2
-                label_y = (y1 - label_h) if (y1 - label_h) >= 0 else y1 + 2
+                label_h = max(14, text_h + pad * 2)
+                label_w = text_w + pad * 2 + 12
 
-                # Dark pill background for label
+                label_y = (y1 - label_h - 2) if (y1 - label_h) >= 0 else min(height - label_h - 1, y1 + 2)
+                label_x = max(0, min(x1, width - label_w - 1))
+                label_y = max(0, min(height - label_h - 1, label_y))
+
+                # Dark pill background with colored border and indicator dot
                 draw.rectangle(
-                    [x1, label_y, x1 + text_w + pad * 2, label_y + label_h],
-                    fill=LABEL_BG
+                    [label_x, label_y, label_x + label_w, label_y + label_h],
+                    fill=LABEL_BG,
+                    outline=box_col + (220,)
                 )
-                # White label text
-                draw.text((x1 + pad, label_y + pad), label, fill=LABEL_FG, font=font)
+                dot_r = 3
+                dot_cy = label_y + label_h // 2
+                draw.ellipse([label_x + 4, dot_cy - dot_r, label_x + 4 + dot_r * 2, dot_cy + dot_r], fill=box_col + (255,))
+                draw.text((label_x + 13, label_y + pad), label, fill=LABEL_FG, font=font)
 
             buf_clean = io.BytesIO()
             annotated_clean_pil.save(buf_clean, format="JPEG", quality=92)

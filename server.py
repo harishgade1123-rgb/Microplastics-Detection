@@ -230,6 +230,13 @@ def process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px):
             box_h_px = y2 - y1
             area_px = box_w_px * box_h_px
 
+            # Reject container rim and outer edge border artifacts (> 28% of frame or hugging edges)
+            if area_px > (width * height * 0.28):
+                continue
+            edges = (x1 <= 2) + (y1 <= 2) + (x2 >= width - 2) + (y2 >= height - 2)
+            if edges >= 2 and area_px > (width * height * 0.10):
+                continue
+
             # Physical micrometer calculations
             width_um = box_w_px * um_per_px
             height_um = box_h_px * um_per_px
@@ -251,7 +258,7 @@ def process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px):
             total_conf += c
 
             boxes_data.append({
-                "id": idx + 1,
+                "id": len(boxes_data) + 1,
                 "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)],
                 "width_px": round(box_w_px, 1),
                 "height_px": round(box_h_px, 1),
@@ -266,6 +273,47 @@ def process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px):
                 "aspect_ratio": aspect_ratio,
                 "roundness": roundness
             })
+
+    # If YOLO has sparse detections (e.g. natural beach sand or composite microscopy),
+    # seamlessly augment with optical microscopy vision detections
+    if len(boxes_data) <= 2:
+        try:
+            from gemini_engine import optical_contour_fallback_detection, calculate_box_iou
+            optical_res = optical_contour_fallback_detection(pil_img, um_per_px=um_per_px, conf_thresh=conf_thresh)
+            opt_dets = optical_res.get("detections", [])
+            for od in opt_dets:
+                overlap = False
+                for b in boxes_data:
+                    if calculate_box_iou(od["bbox"], b["bbox"]) > 0.28:
+                        overlap = True
+                        break
+                if not overlap:
+                    boxes_data.append(od)
+                    if len(boxes_data) >= 28:
+                        break
+
+            # Recalculate counts & metrics
+            morphology_counts = {"Fiber": 0, "Fragment": 0, "Pellet / Nurdle": 0, "Film": 0}
+            size_band_counts = {
+                "Nanoplastic (<1 µm)": 0,
+                "Small Microplastic (1–100 µm)": 0,
+                "Large Microplastic (100–1000 µm)": 0,
+                "Mesoplastic (>1000 µm)": 0
+            }
+            total_conf = 0.0
+            high_conf_count = 0
+            for idx, d in enumerate(boxes_data):
+                d["id"] = idx + 1
+                c = d["confidence"]
+                if c >= 0.5:
+                    high_conf_count += 1
+                total_conf += c
+                m = d.get("morphology", "Fragment")
+                sb = d.get("size_band", "Small Microplastic (1–100 µm)")
+                morphology_counts[m] = morphology_counts.get(m, 0) + 1
+                size_band_counts[sb] = size_band_counts.get(sb, 0) + 1
+        except Exception as oe:
+            print(f"Optical augmentation notice: {oe}")
 
     particle_count = len(boxes_data)
     avg_confidence = round(total_conf / particle_count, 4) if particle_count > 0 else 0.0
@@ -310,13 +358,26 @@ def process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px):
         for d in boxes_data:
             x1, y1, x2, y2 = [int(v) for v in d["bbox"]]
 
-            # Draw bounding box on both
-            for t in range(lw):
-                draw.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=BOX_COLOR)
-                draw_clean.rectangle([x1 + t, y1 + t, x2 - t, y2 - t], outline=BOX_COLOR)
+            morphology = d.get("morphology", "Fragment")
+            color_map = {
+                "Fiber": (59, 130, 246),           # Blue
+                "Fragment": (239, 68, 68),         # Red
+                "Pellet / Nurdle": (245, 158, 11), # Amber
+                "Film": (16, 185, 129)             # Emerald
+            }
+            box_col = color_map.get(morphology, BOX_COLOR)
 
-            # Label: "microplastic 0.35"
-            label = f"{d['class'].lower()} {d['confidence']:.2f}"
+            # Draw bounding box safely on both
+            actual_lw = min(lw, max(1, (x2 - x1) // 2), max(1, (y2 - y1) // 2))
+            for t in range(actual_lw):
+                bx0, by0 = x1 + t, y1 + t
+                bx1, by1 = x2 - t, y2 - t
+                if bx1 > bx0 and by1 > by0:
+                    draw.rectangle([bx0, by0, bx1, by1], outline=box_col)
+                    draw_clean.rectangle([bx0, by0, bx1, by1], outline=box_col)
+
+            # Label: "#1 Fragment 0.85"
+            label = f"#{d['id']} {morphology} {int(d['confidence'] * 100)}%"
             try:
                 bbox_t = font.getbbox(label)
                 text_w = bbox_t[2] - bbox_t[0]
@@ -325,14 +386,23 @@ def process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px):
                 text_w, text_h = len(label) * 7, 14
 
             pad = 4
-            label_h = text_h + pad * 2
-            label_y = (y1 - label_h) if (y1 - label_h) >= 0 else y1 + 2
+            label_h = max(14, text_h + pad * 2)
+            label_w = text_w + pad * 2 + 12
 
+            label_y = (y1 - label_h - 2) if (y1 - label_h - 2) >= 0 else min(height - label_h - 1, y1 + 2)
+            label_x = max(0, min(x1, width - label_w - 1))
+            label_y = max(0, min(height - label_h - 1, label_y))
+
+            # Translucent dark pill badge with colored border and indicator dot
             draw.rectangle(
-                [x1, label_y, x1 + text_w + pad * 2, label_y + label_h],
-                fill=LABEL_BG
+                [label_x, label_y, label_x + label_w, label_y + label_h],
+                fill=LABEL_BG,
+                outline=box_col + (220,)
             )
-            draw.text((x1 + pad, label_y + pad), label, fill=LABEL_FG, font=font)
+            dot_r = 3
+            dot_cy = label_y + label_h // 2
+            draw.ellipse([label_x + 4, dot_cy - dot_r, label_x + 4 + dot_r * 2, dot_cy + dot_r], fill=box_col + (255,))
+            draw.text((label_x + 13, label_y + pad), label, fill=LABEL_FG, font=font)
 
         buf_clean = io.BytesIO()
         annotated_clean_pil.save(buf_clean, format="JPEG", quality=92)
