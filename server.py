@@ -284,9 +284,17 @@ def process_single_detection(pil_img, conf_thresh, apply_clahe, um_per_px):
         risk = "High Contamination Hazard"
         risk_color = "#ef4444" # red
 
-    # Render annotated visualization image
+    # Render annotated visualization image — new style: blue boxes, "microplastic 0.35" labels
     try:
-        annotated_bgr = result.plot()
+        # Blue box colour in BGR for OpenCV (= #3B82F6 → R59 G130 B246)
+        annotated_bgr = result.plot(
+            boxes=True,
+            conf=True,
+            labels=True,
+            line_width=2,
+            font_size=12,
+            color=(246, 130, 59),   # BGR for #3B82F6
+        )
         annotated_rgb = annotated_bgr[..., ::-1]
         annotated_pil = Image.fromarray(annotated_rgb)
     except Exception as pe:

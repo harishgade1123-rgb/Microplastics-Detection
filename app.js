@@ -379,29 +379,37 @@ document.addEventListener("DOMContentLoaded", () => {
         const ctx = offCanvas.getContext("2d");
         ctx.drawImage(img, 0, 0);
 
-        const colorMap = { "Fragment": "#ef4444", "Fiber": "#00f0ea", "Film": "#f59e0b", "Pellet / Nurdle": "#8b5cf6" };
+        // New style: uniform blue boxes with "microplastic 0.35" labels
+        const BOX_COLOR = "#3B82F6";   // bright blue
+        const LABEL_BG  = "rgba(0,0,0,0.72)";
+        const LABEL_FG  = "#FFFFFF";
+
         detections.forEach(d => {
           const [x1, y1, x2, y2] = d.bbox;
-          const color = colorMap[d.morphology] || "#00f0ea";
-          ctx.strokeStyle = color;
-          ctx.lineWidth = Math.max(2, img.naturalWidth / 300);
+          const lw = Math.max(1.5, img.naturalWidth / 400);
+
+          // Draw bounding box
+          ctx.strokeStyle = BOX_COLOR;
+          ctx.lineWidth = lw;
           ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-          const label = `${d.class} ${(d.confidence * 100).toFixed(0)}%`;
-          const fontSize = Math.max(11, img.naturalWidth / 80);
-          ctx.font = `bold ${fontSize}px sans-serif`;
+          // Label: "microplastic 0.35"
+          const label = `${(d.class || "microplastic").toLowerCase()} ${d.confidence.toFixed(2)}`;
+          const fontSize = Math.max(10, img.naturalWidth / 90);
+          ctx.font = `${fontSize}px sans-serif`;
           const textW = ctx.measureText(label).width;
-          ctx.fillStyle = color;
-          ctx.fillRect(x1, y1 - fontSize - 4, textW + 8, fontSize + 6);
-          ctx.fillStyle = "#000";
-          ctx.fillText(label, x1 + 4, y1 - 4);
-        });
+          const padX = 5, padY = 3;
+          const labelH = fontSize + padY * 2;
+          const labelY = y1 - labelH > 0 ? y1 - labelH : y1 + 2;
 
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.fillRect(4, 4, 200, 28);
-        ctx.fillStyle = "#f59e0b";
-        ctx.font = `bold ${Math.max(11, img.naturalWidth / 90)}px sans-serif`;
-        ctx.fillText("⚠ DEMO MODE — Simulated Results", 10, 22);
+          // Dark background pill
+          ctx.fillStyle = LABEL_BG;
+          ctx.fillRect(x1, labelY, textW + padX * 2, labelH);
+
+          // White text
+          ctx.fillStyle = LABEL_FG;
+          ctx.fillText(label, x1 + padX, labelY + fontSize);
+        });
 
         resolve(offCanvas.toDataURL("image/jpeg", 0.92));
       };
